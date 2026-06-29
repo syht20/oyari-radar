@@ -1,9 +1,10 @@
-name: Oyari Cloud Sniper
+name: Oyari Cloud Sniper Two-in-One
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # 📅 真正微軟雲端自動化：每 30 分鐘自動在微軟機房執行一次
-  workflow_dispatch:      # 支援隨時手動點擊按鈕執行測試
+    - cron: '*/30 * * * *'  # 📅 引擎一：每 30 分鐘自動在雲端默默巡邏一次（即時獵殺數字空房）
+    - cron: '0 13 * * *'    # 📅 引擎二：每天世界標準時 13:00（台灣時間晚上 21:00 / 日本 22:00）自動強制醒來寄信！
+  workflow_dispatch:        # 支援隨時手動點擊執行測試
 
 jobs:
   run-sniper:
@@ -20,5 +21,11 @@ jobs:
     - name: Install Dependencies
       run: pip install requests beautifulsoup4
 
+    # 🚀 智慧分流判定：修復了先前的手誤錯字與入參傳遞，兩格完全獨立，Fail 互不影響
     - name: Execute Sniper Script
-      run: python oyari.py
+      run: |
+        if [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
+          python oyari.py daily
+        else
+          python oyari.py check
+        fi
