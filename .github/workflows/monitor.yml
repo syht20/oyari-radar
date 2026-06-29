@@ -1,0 +1,24 @@
+name: Oyari Cloud Sniper
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # 📅 真正微軟雲端自動化：每 30 分鐘自動在微軟機房執行一次
+  workflow_dispatch:      # 支援隨時手動點擊按鈕執行測試
+
+jobs:
+  run-sniper:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install Dependencies
+      run: pip install requests beautifulsoup4
+
+    - name: Execute Sniper Script
+      run: python oyari.py
