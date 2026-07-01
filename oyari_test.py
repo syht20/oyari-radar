@@ -11,7 +11,6 @@ import requests
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
-# 💡 終極降維：直擊診斷與 HTML 原始碼中共同發現的實體 AJAX 日曆數據接口
 URL_POST_TARGET = "https://enzanso-reservation.jp"
 
 TARGET_YEAR_MONTH = "2026年10月"
@@ -56,11 +55,10 @@ def send_plain_alert_email(subject, body_html):
 
 def extract_day_status(clean_html_text, day_string):
     """核心交叉驗證演算法：精準定位特定日期在 HTML 標籤內部的即時狀態"""
-    # 💡 100% 對齊您提供的實實原始碼結構進行正則比對 (捕捉 ◯、▲、満)
     match = re.search(day_string + r'.*?([◯▲臨満满\d])', clean_html_text)
     if match:
         status_char = match.group(1)
-        if status_char in ["臨", "臨", "満", "满"]:
+        if status_char in ["臨", "満", "满"]:
             return "滿室 (臨/満)"
         elif status_char in ["◯", "▲"] or status_char.isdigit():
             return f"🔥 有空房 [{status_char}]"
@@ -68,11 +66,10 @@ def extract_day_status(clean_html_text, day_string):
     return "未能在原始碼中定位該日期"
 
 def check_oyari(mode="check"):
-    """💡 終極大降維：人為製造完美的擬人化 Cookie 軌跡，徹底擊碎 WAF 轉址攔截"""
+    """💡 終極大降維：模擬網頁原生 doPost 的 AJAX 數據請求，秒發秒收，不開瀏覽器"""
     print("🚀 [AJAX DATA HUB] Synchronizing requests with real-time payload...")
     session = requests.Session()
     
-    # 完美對齊真實 Chrome 瀏覽器的全套 Headers
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -86,22 +83,21 @@ def check_oyari(mode="check"):
         # Step 1: 先拜訪首頁，拿 Cookie
         session.get(URL_BASE, timeout=15)
         
-        # 💡 核心環境對齊：強制定格睡 3.0 秒！模擬人類閱讀首頁的正常時差，破除網站對 Session 暴衝的判定
+        # 💡 核心環境對齊：強制定格睡 3.0 秒！模擬人類閱讀首頁的正常時差
         print(" -> Simulating human browsing behavior time delay...")
         time.sleep(3.0)
         
-        # Step 2: 💡 終極降維大破局：完全對齊真實網頁 doPost 函數發出的 AJAX 局部刷新數據包！
+        # Step 2: 完全對齊真實網頁 doPost 發出的 AJAX 局部刷新數據包！
         ajax_payload = {
-            "yoteibi": "20261001",  # 鎖定 10 月 1 日局部表格更新參數
-            "p": "30",              # 槍岳大槍 Hut ID 參數
-            "agree": "1"            # 同意欄位
+            "yoteibi": "20261001",  
+            "p": "30",              
+            "agree": "1"            
         }
         
         res = session.post(URL_POST_TARGET, data=ajax_payload, timeout=15)
         res.encoding = 'utf-8'
         html_content_parsed = res.text
 
-        # 100% 恢復您最引以為傲、完全正確的 BeautifulSoup 解析引擎
         soup = BeautifulSoup(html_content_parsed, 'html.parser')
         list_items = soup.find_all('li')
         day_stripped = str(int(TARGET_DAY))
@@ -114,7 +110,8 @@ def check_oyari(mode="check"):
             cell_text_clean = "".join(cell_text.split())
             
             if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
-                if "previous" not in li_html upgrade and "next" not in li_html and "calendarDate" not in li_html:
+                # 💡 語法錯誤完全修正：拔除錯誤的 upgrade 單字
+                if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
                     found_day = True
                     break
 
@@ -124,14 +121,14 @@ def check_oyari(mode="check"):
         status_10_03 = extract_day_status(clean_all_spaces, "3日")
         status_10_06 = extract_day_status(clean_all_spaces, "6日")
 
-        # 擷取日曆表格核心片段，當作郵件內文面板 (擴大範圍至 2500 字元)
+        # 擷取日曆表格核心片段，當作郵件內文面板
         preview_idx = html_content_parsed.find("calendarTable")
         if preview_idx == -1: preview_idx = html_content_parsed.find("calendarDate")
         if preview_idx == -1: preview_idx = 0
         raw_snippet = html_content_parsed[preview_idx:preview_idx+2500].strip().replace('<', '&lt;').replace('>', '&gt;')
 
         if mode != "daily":
-            if found_day and "臨" not in cell_text_clean and "阻" not in cell_text_clean and "満" not in cell_text_clean and "满" not in cell_text_clean:
+            if found_day and "臨" not in cell_text_clean and "阻" not in cell_text_clean and "満" not in cell_text_clean and "man" not in cell_text_clean:
                 print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
                 urgent_html = f"<h2>🔥 [Vacancy Alert] October 3rd is available ({cell_text_clean})!</h2>"
                 send_plain_alert_email(EMAIL_SUBJECT_URGENT, urgent_html)
@@ -157,10 +154,10 @@ def check_oyari(mode="check"):
                   </ul>
                 </div>
 
-                <p>If you see '◯', '▲', or any single-digit number instead of '臨' or '臨' or '満', please act immediately!</p>
+                <p>If you see '◯', '▲', or any single-digit number instead of '臨' or '満', please act immediately!</p>
                 <br>
                 
-                <!-- 核心黑色原始碼面板 (100% 承接您剛才發給我的 10月真實 HTML 結構) -->
+                <!-- 核心黑色原始碼面板 -->
                 <div style="background:#222; padding:15px; border-radius:6px; font-family:monospace; box-shadow: inset 0 0 10px #000;">
                   <b style="color:#5cb85c;">[💾 Real October Calendar HTML Source Code Node]</b>
                   <pre style="white-space: pre-wrap; font-size:12px; color:#fff; margin-top:10px; line-height:1.4;">{raw_snippet}</pre>
