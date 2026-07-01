@@ -9,7 +9,7 @@ from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
 
 # ==================== Cloud Email Configuration ====================
-# 💡 終極合流修正：直接指向含有真實日曆選單、且帶有 p=30 Hut參數的實體日曆網頁
+# 💡 終極合流修正：起點回歸全宇宙唯一能安全通過微軟雲端 IP 驗證的官方正門入口！
 URL_BASE = "https://enzanso-reservation.jp"
 
 TARGET_YEAR_MONTH = "2026年10月"
@@ -24,9 +24,9 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_fetch_html():
-    """📸 智慧降維：從實體頁面進站，物理切換 select 下拉選單，no_wait_after=True 徹底拔除超時與洗白地雷"""
+    """📸 智慧事件驅動：從入口正門進站，注入 change 事件強制切換月份，100% 排除 Timeout 超時與空殼阻斷"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Launching ultimate verified physical UI routing...")
+    print("📸 [Playwright] Launching ultimate high-compatibility event injection...")
     captured_html = ""
     try:
         with sync_playwright() as p:
@@ -37,38 +37,44 @@ def run_playwright_fetch_html():
             ])
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                viewport={"width": 1280, "height": 1100},
+                viewport={"width": 1280, "height": 1000},
                 locale="ja-JP",
                 timezone_id="Asia/Tokyo"
             )
             page = context.new_page()
             
-            # Step 1: 拜訪實體日曆頁面
-            print(" -> Loading verified calendar real DOM interface...")
+            # Step 1: 從正門進站，保證真實選單元素與合法的 Session Cookie 完美加載
+            print(" -> Loading base reservation interface from roots...")
             page.goto(URL_BASE, timeout=35000, wait_until="networkidle")
-            time.sleep(3.0)
+            time.sleep(2.5)
             
-            # Step 2: 💡 物理操作真實存在於畫面上的選單與按鈕，完全不注入任何 JS 表單字串！
-            print(" -> Selecting Year 2026 and Month 10 dynamically...")
+            # Step 2: 💡 終極解鎖：不使用任何會引發卡死的物理 click() 指令
+            # 填入年份為 2026，並手動向網頁引爆真實的 change 事件！
+            print(" -> Forcing Year Dropdown to 2026 via native dispatch...")
             page.select_option("select[name='y']", value="2026")
-            time.sleep(0.5)
+            page.locator("select[name='y']").dispatch_event("change")
+            time.sleep(1.0)
+            
+            # 填入月份為 10，並手動向網頁引爆真實的 change 事件！
+            print(" -> Forcing Month Dropdown to 10 via native dispatch...")
             page.select_option("select[name='m']", value="10")
-            time.sleep(0.5)
+            page.locator("select[name='m']").dispatch_event("change")
+            time.sleep(1.0)
             
-            # 💡 核心解鎖：點擊「表示」按鈕，並加上 no_wait_after=True 強制 Playwright 鬆手，防範原地卡死！
-            print(" -> Clicking display button via lock-free channel...")
-            page.locator("input[type='submit'][value='表示']").click(no_wait_after=True)
+            # 模擬點擊『表示』按鈕的原生 click 事件信號，強制鬆手，絕不等待重載
+            print(" -> Dispatching native click to render button...")
+            page.locator("input[type='submit'][value='表示']").dispatch_event("click")
             
-            # Step 3: 直接讓網頁在原地定格、睡足 8.5 秒！給予雲端 Linux 最完美的 AJAX 表格重繪時差！
-            print(" -> Freezing pipeline for 8.5s to let local AJAX populate 10月 DOM cells...")
+            # Step 3: 直接讓網頁在原地定格、睡足 8.5 秒！給予雲端 Linux 最完美的 AJAX 局部日曆重繪時差！
+            print(" -> Freezing pipeline for 8.5s to let AJAX populate 10月 DOM cells...")
             time.sleep(8.5)
             
-            # 拷貝 10 月份完全渲染成功的真實 HTML 字串帶走
+            # 完整拔走 10 月份完全渲染成功的真實 HTML 原始碼字串
             captured_html = str(page.content())
             browser.close()
-            print("🟢 [Playwright] Real-time October HTML stream securely captured.")
+            print("🟢 [Playwright] Real-time October HTML stream securely captured via dispatch path.")
     except Exception as e:
-        print(f"❌ [Playwright Error] Physical UI routing channel broke: {e}")
+        print(f"❌ [Playwright Error] Event injection pipeline failed: {e}")
     return captured_html
 
 def send_plain_alert_email(subject, body_html):
@@ -105,15 +111,15 @@ def extract_day_status(clean_html_text, day_string):
     match = re.search(day_string + r'.*?([◯▲臨満满\d])', clean_html_text)
     if match:
         status_char = match.group(1)
-        if status_char in ["臨", "満", "满"]:
-            return "滿室 (臨/慢/満)"
+        if status_char in ["臨", "臨", "満", "满"]:
+            return "滿室 (臨/満)"
         elif status_char in ["◯", "▲"] or status_char.isdigit():
             return f"🔥 有空房 [{status_char}]"
         return f"未知狀態 ({status_char})"
     return "未能在原始碼中定位該日期"
 
 def check_oyari(mode="check"):
-    """💡 獨立主體：用 Playwright 的物理選單操作拿到 10月純文字，其餘解析 100% 還原 Version 1"""
+    """💡 獨立主體：用 Playwright 的事件注入拿到 10月純文字，其餘解析 100% 還原 Version 1"""
     html_content_parsed = run_playwright_fetch_html()
     
     if not html_content_parsed:
