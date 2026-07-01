@@ -6,7 +6,7 @@ import sys
 import os 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.image import MIMEImage 
+from email.mime.image import MIMEImage # 💡 僅用來讀取實體照片
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
@@ -22,9 +22,9 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_workflow():
-    """📸 真人模擬點擊 3 次次月：帶入 no_wait_after=True 與 Viewport 抓拍，保證生成飽滿 10 月圖片"""
+    """📸 智慧動態校正：不論當前是幾月，只要畫面還沒到10月，就動態點擊『次月』直到抵達為止"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Launching safe sequential tracking sub-routing...")
+    print("📸 [Playwright] Launching dynamic intelligent human simulation...")
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=[
@@ -40,57 +40,60 @@ def run_playwright_workflow():
             )
             page = context.new_page()
             
-            print(" -> Loading reservation page (July)...")
+            print(" -> Loading reservation interface...")
             page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
             time.sleep(2.5)
             
-            # 循序點擊 3 次（no_wait_after=True 徹底拔除 Timeout 超時死鎖）
-            print(" -> Clicking '次月' (July -> August)...")
-            page.get_by_role("link", name="次月").click(no_wait_after=True)
-            time.sleep(3.5)
+            # 動態智慧導航：自動辨識並點擊，徹底封殺跨月移位地雷
+            for attempt in range(1, 7):
+                if TARGET_YEAR_MONTH in page.content():
+                    print(f"🟢 [SUCCESS] Targeted month reached!")
+                    break
+                    
+                print(" -> Current month is not target. Simulating human mouse click on '次月'...")
+                next_month_link = page.get_by_role("link", name="次月")
+                if next_month_link.is_visible():
+                    next_month_link.hover()
+                    time.sleep(0.4)
+                    next_month_link.click(no_wait_after=True) # 鎖定防卡死引爆點
+                    time.sleep(4.0)
+                else:
+                    break
             
-            print(" -> Clicking '次月' (August -> September)...")
-            page.get_by_role("link", name="次月").click(no_wait_after=True)
-            time.sleep(3.5)
-            
-            print(" -> Clicking '次月' (September -> October)...")
-            page.get_by_role("link", name="次月").click(no_wait_after=True)
-            
-            # 給予極其充裕的 6.5 秒，讓 10 月份數據表格與中文字體完全渲染歸位
-            print(" -> Stabilization freeze for October calendar render...")
-            time.sleep(6.5)
-            
-            # 視窗截圖（不使用 full_page，確保 Linux 不會算錯高度）
+            time.sleep(2.0)
+            # 拍攝實體高畫質照片
             page.screenshot(path="screenshot.png", full_page=False)
             browser.close()
-            print("🟢 [Playwright] 10月 snapshot saved.")
+            print("🟢 [Playwright] 10月 physical snapshot saved to storage.")
     except Exception as e:
-        print(f"❌ [Playwright Error] Capture failed: {e}")
+        print(f"❌ [Playwright Error] Intelligent trajectory broken: {e}")
 
 def execute_daily_report():
-    """💡 100% 還原您最一開始成功收到 7 月信件時的相容性寄信結構，不加任何多餘標頭與重複編碼"""
-    print("🚀 [DAILY REPORT NODE] Initializing pure Version 1 mail envelope...")
+    """💡 終極降維大破局：完全拋棄會被 Gmail 阻擋的內嵌標籤，改用 100% 絕對放行的普通檔案附件"""
+    print("🚀 [DAILY REPORT NODE] Starting safe sequential mail structure...")
     
-    # 後台執行 Playwright 截圖
+    # 執行 Playwright 真人序列點擊截圖
     run_playwright_workflow()
     
-    # 💡 終極修正：100% 還原成您最原始成功的 MIMEMultipart() 結構，一行都不多改！
+    # 💡 核心修正：回歸最相容、全宇宙郵件伺服器最認可的標準混合容器
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
     msg['Subject'] = EMAIL_SUBJECT_DAILY
     
+    # 💡 核心修正：HTML 內完全不寫 cid 標籤，徹底拔除破圖叉叉，直接提示用戶下載最下方的實體附檔！
     html_content = f"""
     <html>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <h3>📢 This is the daily snapshot of Hut Oyari Calendar (2026年10月):</h3>
         <p>If you see '◯', '▲', or any single-digit number instead of '満', please click below to book immediately!</p>
         <br>
-        <p><b>📸 Below is the live calibrated 10月 calendar screenshot from the official server:</b></p>
-        <img src="cid:calendar_image" alt="[Calendar Image]" style="max-width: 100%; border: 1px solid #ccc; border-radius: 5px;">
-        <br><br>
+        <p style="padding: 10px; background-color: #ffffcc; border-left: 4px solid #f0ad4e; font-weight: bold;">
+          📎 10月份最新預約日曆實體照片，已作為「常規檔案附件」夾帶於本封郵件最下方，請點擊打開查看！
+        </p>
+        <br>
         <div style="margin: 20px 0;">
-          <a href="{URL_BASE}" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
+          <a href="https://enzanso-reservation.jp" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
         </div>
         <br>
         <hr style="border: 0; border-top: 1px solid #eee;">
@@ -100,18 +103,19 @@ def execute_daily_report():
     """
     msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-    # 💡 終極修正：原汁原味 Version 1 內嵌法，絕不呼叫 encoders.encode_base64 造成雙重編碼破損！
+    # 💡 核心修正：將生成的 10 月照片作為最純粹的實體附加檔案（Attachment）掛在信件最尾巴
     if os.path.exists("screenshot.png"):
         try:
             with open("screenshot.png", "rb") as f:
-                image = MIMEImage(f.read()) # 100% 重現當初成功的單純宣告
-                image.add_header('Content-ID', '<calendar_image>')
-                msg.attach(image)
-                print("🟢 [MIME PROCESS] Raw image attached via original stable path.")
+                attachment = MIMEImage(f.read(), _subtype="png")
+                # 設定標準的附件下載標頭
+                attachment.add_header('Content-Disposition', 'attachment', filename='oyari_calendar_october.png')
+                msg.attach(attachment)
+                print("🟢 [MAIL ROUTING] PNG document appended successfully as a standard attachment.")
         except Exception as e:
-            print("⚠️ Image attach skipped:", e)
+            print(f"❌ [MAIL ROUTING ERROR] Attachment failed: {e}")
     else:
-        print("❌ [MIME ERROR] screenshot.png was missing!")
+        print("❌ [MAIL ROUTING ERROR] screenshot.png was missing!")
 
     # 🔴 您 Version 1 最核心、穩定不變的雙保險 SMTP 寄信邏輯
     smtp_target = "://gmail.com"
