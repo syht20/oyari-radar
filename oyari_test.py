@@ -22,6 +22,7 @@ PASSWORD = "qywcsfzqrpvemoyo"         # 💡 Your 16-letter App Password (e.g. "
 RECIPIENT_EMAIL = "syht20@gmail.com" # 💡 Your recipient inbox
 
 EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become available"
+# 🎯 Daily 標題已依您的要求精準修改為：
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
 # ===================================================================
 
@@ -162,21 +163,21 @@ def check_oyari(mode="check"):
         print("Cloud inspection node error:", e)
 
 # ===================================================================
-# 🛡️ 【人類偽裝完美版截圖功能】完全獨立於最底部
+# 🛡️ 【修復完成：防禦偽裝版截圖函數】
 # ===================================================================
 def run_playwright_screenshot():
     from playwright.sync_api import sync_playwright
     print("📸 [Playwright] Trying to capture calendar snapshot with Anti-Bot bypass...")
     try:
         with sync_playwright() as p:
-            # 1. 🔍 隱藏自動化痕跡，去除 navigator.webdriver 機器人特徵
+            # 1. 🔍 移除自動化痕跡特徵
             browser = p.chromium.launch(headless=True, args=[
                 '--disable-blink-features=AutomationControlled',
                 '--no-sandbox',
                 '--disable-setuid-sandbox'
             ])
             
-            # 2. 注入真實的 Chrome 指紋環境與視窗寬高
+            # 2. 注入真實 Windows Chrome 視窗環境
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 viewport={"width": 1280, "height": 1000},
@@ -186,12 +187,12 @@ def run_playwright_screenshot():
             
             page = context.new_page()
             
-            # 3. 先訪問首頁建立正常的 Session Cookie 與 訪問來源（Referer）
+            # 3. 先拜訪首頁建立 Session Cookie 與 訪問來源 
             print(" -> Visiting base URL...")
             page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
             page.wait_for_timeout(2000)
             
-            # 4. 🔥 核心繞過：執行 JavaScript 在前端直接提交與您的 requests 相同的 POST Payload 
+            # 4. 🔥 核心繞過：執行前端 JS 提交 POST 參數切換至 2026年10月 日曆
             print(" -> Executing anti-bot secure form submission...")
             page.evaluate("""() => {
                 const form = document.createElement('form'); 
@@ -199,5 +200,5 @@ def run_playwright_screenshot():
                 form.action = 'https://enzanso-reservation.jp';
                 
                 const pIn = document.createElement('input'); pIn.type = 'hidden'; pIn.name = 'p'; pIn.value = '30';
-                const yInput = document.createElement('input'); yInput.type = 'hidden'; yInput.name = 'y'; yInput.value = '2026';
+                const yIn = document.createElement('input'); yIn.type = 'hidden'; yIn.name = 'y'; yIn.value = '2026';
                 const mIn = document.createElement('input'); mIn.type = 'hidden'; mIn.name = 'm'; mIn.value = '10';
