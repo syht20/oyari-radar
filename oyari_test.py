@@ -8,6 +8,7 @@ import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage 
+from email import encoders # 💡 核心修正：引入 Base64 二進位編碼器，防止圖片資料流毀損
 from bs4 import BeautifulSoup
 import requests
 
@@ -60,14 +61,18 @@ def run_playwright_rendering(html_source):
         print(f"❌ [Playwright Error] Local render engine failed: {e}")
 
 def send_alert_email(current_status_text, is_daily_report=False):
-    """Sends custom notification layout based on mode (Python 3.12 compatible)"""
-    # 💡 核心規範修正：內嵌圖片的 HTML 信件，主容器必須宣告為 'related' 類型
-    msg = MIMEMultipart('related')
+    """Sends custom notification layout strictly compliant with RFC 2387 Email Protocols"""
+    
+    # 💡 終極修正一：最外層使用最包容的 'alternative' 容器，讓不支援 HTML 的環境也能讀文字，大幅降底吃信率
+    msg = MIMEMultipart('alternative')
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
     
     if is_daily_report:
         msg['Subject'] = EMAIL_SUBJECT_DAILY
+        # 提供給反垃圾郵件伺服器核對的純文字版本（Fallback Plain Text）
+        text_content = f"Hut Oyari Daily Snapshot. Current Status of Oct {TARGET_DAY}rd is: {current_status_text}."
+        
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -87,6 +92,32 @@ def send_alert_email(current_status_text, is_daily_report=False):
           </body>
         </html>
         """
+        
+        # 💡 終極修正二：嚴格遵守圖文內嵌規格，建立與 HTML 緊密交織的 related 內部巢狀容器
+        msg_related = MIMEMultipart('related')
+        msg_related.attach(MIMEText(html_content, 'html', 'utf-8'))
+        
+        if os.path.exists("screenshot.png"):
+            try:
+                with open("screenshot.png", "rb") as f:
+                    # 💡 終極修正三：顯式指定為 png 子類型，並執行強制的 Base64 數據編碼，保證圖片流不破碎
+                    image = MIMEImage(f.read(), _subtype="png")
+                    encoders.encode_base64(image)
+                    
+                    # 💡 終極修正四：根據 RFC 2387 規範，Content-ID 必須用角括號 <> 包裹，否則手機/網頁版 Gmail 會拒絕連結！
+                    image.add_header('Content-ID', '<calendar_image>')
+                    image.add_header('Content-Disposition', 'inline', filename='screenshot.png')
+                    msg_related.attach(image)
+                    print("🟢 [MIME PROCESS] Base64 Image nested safely with bracketed Content-ID.")
+            except Exception as e:
+                print(f"❌ [MIME ERROR] Image attachment encoding failed: {e}")
+        else:
+            print("❌ [MIME ERROR] screenshot.png was missing during envelope assembly!")
+            
+        # 依序把純文字和圖文容器塞入主要信件中
+        msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
+        msg.attach(msg_related)
+        
     else:
         msg['Subject'] = EMAIL_SUBJECT_URGENT
         html_content = f"""
@@ -104,24 +135,9 @@ def send_alert_email(current_status_text, is_daily_report=False):
           </body>
         </html>
         """
-        
-    msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-    # 💡 核心規範修正：明確加上 _subtype="png"，防止部分信箱伺服器無法解析二進位檔
-    if is_daily_report:
-        if os.path.exists("screenshot.png"):
-            try:
-                with open("screenshot.png", "rb") as f:
-                    image = MIMEImage(f.read(), _subtype="png")
-                    image.add_header('Content-ID', '<calendar_image>')
-                    image.add_header('Content-Disposition', 'inline', filename='screenshot.png')
-                    msg.attach(image)
-                    print("🟢 [DIAGNOSTIC] Inline PNG screenshot attached successfully.")
-            except Exception as e:
-                print(f"❌ [DIAGNOSTIC ERROR] Failed to attach image: {e}")
-        else:
-            print("❌ [DIAGNOSTIC ERROR] screenshot.png DOES NOT EXIST!")
-
+    # 🔴 您最核心、測試很久的雙保險 SMTP 寄信邏輯
     smtp_target = "://gmail.com"
     try:
         socket.gethostbyname(smtp_target)
@@ -161,7 +177,6 @@ def check_oyari(mode="check"):
         html_source_10 = res.text
         
         soup = BeautifulSoup(html_source_10, 'html.parser')
-        
         list_items = soup.find_all('li')
         day_stripped = str(int(TARGET_DAY))
         found_day = False
@@ -189,15 +204,3 @@ def check_oyari(mode="check"):
                     break
                     
         if not found_day and mode == "daily":
-            run_playwright_screenshot(html_source_10)
-            send_alert_email("Checked (Data unparsed, please verify link manually)", is_daily_report=True)
-            
-    except Exception as e:
-        print("Cloud inspection node error:", e)
-
-if __name__ == "__main__":
-    run_mode = "check"
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "daily": # 💡 終極修正：補上真正的索引 [1]，徹底打通 daily 通道！
-            run_mode = "daily"
-    check_oyari(mode=run_mode)
