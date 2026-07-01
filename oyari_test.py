@@ -75,7 +75,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
         
     msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-    # 🛠️ 【安全外掛機制】：檢查圖片檔案是否存在並嘗試嵌入。即使失敗，也絕對會保證純文字信順利發出
+    # 🛠️ 【安全外掛機制】：檢查圖片檔案是否存在並嘗試嵌入。
     if is_daily_report:
         if os.path.exists("screenshot.png"):
             try:
@@ -83,11 +83,11 @@ def send_alert_email(current_status_text, is_daily_report=False):
                     image = MIMEImage(f.read())
                     image.add_header('Content-ID', '<calendar_image>')
                     msg.attach(image)
-                    print("🟢 [DIAGNOSTIC] Screenshot attached successfully to email object.")
+                    print("🟢 [DIAGNOSTIC] Screenshot attached successfully.")
             except Exception as e:
                 print(f"❌ [DIAGNOSTIC ERROR] Failed to attach image: {e}")
         else:
-            print("❌ [DIAGNOSTIC ERROR] screenshot.png DOES NOT EXIST when sending email!")
+            print("❌ [DIAGNOSTIC ERROR] screenshot.png DOES NOT EXIST!")
 
     smtp_target = "://gmail.com"
     try: socket.gethostbyname(smtp_target)
@@ -162,22 +162,17 @@ def check_oyari(mode="check"):
     except Exception as e:
         print("Cloud inspection node error:", e)
 
-# ===================================================================
-# 🛡️ 【100% 語法安全：完全避開引號衝突的 JS 提交函數】
-# ===================================================================
 def run_playwright_screenshot():
     from playwright.sync_api import sync_playwright
     print("📸 [Playwright] Trying to capture calendar snapshot with Anti-Bot bypass...")
     try:
         with sync_playwright() as p:
-            # 1. 🔍 移除自動化機器人特徵
             browser = p.chromium.launch(headless=True, args=[
                 '--disable-blink-features=AutomationControlled',
                 '--no-sandbox',
                 '--disable-setuid-sandbox'
             ])
             
-            # 2. 注入真實的環境指紋
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 viewport={"width": 1280, "height": 1000},
@@ -187,16 +182,18 @@ def run_playwright_screenshot():
             
             page = context.new_page()
             
-            # 3. 訪問首頁拿到必要的網頁 Cookie 
             print(" -> Visiting base URL...")
             page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
             page.wait_for_timeout(2000)
             
-            # 4. 🔥 核心修正：將 JS 程式碼寫成單行普通字串，徹底免除三引號帶來的 Python 編譯語法錯誤！
             print(" -> Executing anti-bot secure form submission...")
-            js_payload = (
-                "() => {\n"
-                "  const f = document.createElement('form'); f.method = 'POST'; f.action = 'https://enzanso-reservation.jp';\n"
-                "  const p1 = document.createElement('input'); p1.type = 'hidden'; p1.name = 'p'; p1.value = '30';\n"
-                "  const p2 = document.createElement('input'); p2.type = 'hidden'; p2.name = 'y'; p2.value = '2026';\n"
-                "  const p3 = document.createElement('input'); p3.type = 'hidden'; p3.name = 'm'; p3.value = '10';\n"
+            js_script = "() => { const f = document.createElement('form'); f.method = 'POST'; f.action = 'https://enzanso-reservation.jp'; const p1 = document.createElement('input'); p1.type = 'hidden'; p1.name = 'p'; p1.value = '30'; const p2 = document.createElement('input'); p2.type = 'hidden'; p2.name = 'y'; p2.value = '2026'; const p3 = document.createElement('input'); p3.type = 'hidden'; p3.name = 'm'; p3.value = '10'; const p4 = document.createElement('input'); p4.type = 'hidden'; p4.name = 'agree'; p4.value = '1'; f.appendChild(p1); f.appendChild(p2); f.appendChild(p3); f.appendChild(p4); document.body.appendChild(f); f.submit(); }"
+            page.evaluate(js_script)
+            
+            print(" -> Waiting for calendar render...")
+            page.wait_for_timeout(6000)
+            
+            page.screenshot(path="screenshot.png", full_page=True)
+            browser.close()
+        print("🟢 [Playwright] Anti-bot snapshot successfully saved.")
+    except Exception as e:
