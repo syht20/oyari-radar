@@ -25,40 +25,33 @@ EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become avail
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
 # ===================================================================
 
-def run_playwright_screenshot():
-    """📸 徹底獨立的截圖函數，完全避開多行字串與 Python 語法衝突"""
+def run_playwright_rendering(html_source):
+    """📸 終極修正：直接將 requests 成功的 10月 HTML 原始碼注入瀏覽器進行本地高畫質拍照"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Starting browser...")
+    print("📸 [Playwright] Initializing secure render subsystem...")
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=[
-                '--disable-blink-features=AutomationControlled',
-                '--no-sandbox',
-                '--disable-setuid-sandbox'
-            ])
+            browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
             context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                viewport={"width": 1280, "height": 1000},
+                viewport={"width": 1280, "height": 1200},
                 locale="zh-TW",
                 timezone_id="Asia/Taipei"
             )
             page = context.new_page()
-            print(" -> Visiting base URL...")
-            page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
-            page.wait_for_timeout(2000)
             
-            print(" -> Submitting 2026-10 calendar form...")
-            # 💡 核心修正：完美對齊您 requests 的 4 個欄位 (p=30, y=2026, m=10, agree=1)，確保網站順利切換到10月
-            js_script = "() => { const f = document.createElement('form'); f.method = 'POST'; f.action = 'https://enzanso-reservation.jp'; const p1 = document.createElement('input'); p1.type = 'hidden'; p1.name = 'p'; p1.value = '30'; const p2 = document.createElement('input'); p2.type = 'hidden'; p2.name = 'y'; p2.value = '2026'; const p3 = document.createElement('input'); p3.type = 'hidden'; p3.name = 'm'; p3.value = '10'; const p4 = document.createElement('input'); p4.type = 'hidden'; p4.name = 'agree'; p4.value = '1'; f.appendChild(p1); f.appendChild(p2); f.appendChild(p3); f.appendChild(p4); document.body.appendChild(f); f.submit(); }"
-            page.evaluate(js_script)
+            # 🔥 核心繞過：將您的 requests 核心拿到的 10 月網頁字串，直接灌進虛擬瀏覽器中渲染
+            print(" -> Injecting 10月 target HTML code directly into browser memory...")
+            page.set_content(html_source, wait_until="networkidle")
             
-            print(" -> Waiting for render...")
-            page.wait_for_timeout(6000)
+            # 給予中日文字體與 CSS 樣式定格渲染的緩衝時間
+            page.wait_for_timeout(4000)
+            
+            # 拍照存檔
             page.screenshot(path="screenshot.png", full_page=True)
             browser.close()
-            print("🟢 [Playwright] Snapshot saved.")
+            print("🟢 [Playwright] 10月 calendar snapshot successfully rendered and saved.")
     except Exception as e:
-        print(f"❌ [Playwright Error]: {e}")
+        print(f"❌ [Playwright Error] Local render engine failed: {e}")
 
 def send_alert_email(current_status_text, is_daily_report=False):
     """Sends custom notification layout based on mode (Python 3.12 compatible)"""
@@ -144,10 +137,6 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
-    if mode == "daily":
-        print("🔍 [DIAGNOSTIC] Starting check_oyari in DAILY mode...")
-        run_playwright_screenshot()
-
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -158,7 +147,11 @@ def check_oyari(mode="check"):
         session.get(URL_BASE, timeout=15)
         payload = {"p": "30", "y": "2026", "m": "10", "agree": "1"}
         res = session.post("https://enzanso-reservation.jp", data=payload, timeout=15)
-        soup = BeautifulSoup(res.text, 'html.parser')
+        
+        # 💡 將您 Jupyter 成功拿到的 res.text（10月的完整HTML）存留下來
+        html_source_10 = res.text
+        
+        soup = BeautifulSoup(html_source_10, 'html.parser')
         
         list_items = soup.find_all('li')
         day_stripped = str(int(TARGET_DAY))
@@ -176,6 +169,8 @@ def check_oyari(mode="check"):
                     
                     if mode == "daily":
                         print(f"Executing daily summary check. Status: {cell_text_clean}")
+                        # 💡 只有在要寄信前，才把剛才現成拿到的 10月 HTML 送去拍照，萬無一失！
+                        run_playwright_rendering(html_source_10)
                         send_alert_email(cell_text_clean, is_daily_report=True)
                     else:
                         if "阻" in cell_text_clean or "満" in cell_text_clean or "满" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
@@ -186,6 +181,8 @@ def check_oyari(mode="check"):
                     break
                     
         if not found_day and mode == "daily":
+            # 備援拍照
+            run_playwright_rendering(html_source_10)
             send_alert_email("Checked (Data unparsed, please verify link manually)", is_daily_report=True)
             
     except Exception as e:
