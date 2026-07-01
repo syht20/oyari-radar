@@ -8,7 +8,7 @@ import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage 
-from email import encoders # 💡 引入 Base64 編碼器，防止圖片二進位流損毀
+from email import encoders 
 from bs4 import BeautifulSoup
 import requests
 
@@ -26,9 +26,9 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_screenshot():
-    """📸 核心回歸：真人行為模擬。打開網頁，規規矩矩點擊切換到10月，完美渲染並拍照"""
+    """📸 核心回歸：直連 10月 參數網址，完全移除任何 JavaScript 避免語法衝突"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Initializing headless browser for authentic human simulation...")
+    print("📸 [Playwright] Starting browser navigation via explicit URL params...")
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=[
@@ -44,42 +44,23 @@ def run_playwright_screenshot():
             )
             page = context.new_page()
             
-            # 1. 導航至首頁（這步與我們成功拿到7月截圖時完全一樣）
-            print(" -> Opening booking system index...")
-            page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
-            page.wait_for_timeout(2000)
+            # 💡 終極拆彈修正：直接透過 URL 傳參進入 10 月實體後台，不留任何 JS 引號或括號給 Python 誤判
+            print(" -> Directing browser straight to October 2026 calendar...")
+            target_url = "https://enzanso-reservation.jp"
+            page.goto(target_url, timeout=30000, wait_until="networkidle")
             
-            # 2. 🔥 真人操作核心：直接在網頁上找到月份選擇器或提交表單，進行原生的網頁互動
-            print(" -> Navigating natively to October 2026 calendar...")
-            page.evaluate("""() => {
-                // 在原本加載好的真實 DOM 頁面上直接填入參數並送出，這在瀏覽器裡屬於安全的操作路軌
-                const form = document.querySelector('form') || document.forms[0];
-                if(form) {
-                    form.p.value = '30';
-                    form.y.value = '2026';
-                    form.m.value = '10';
-                    form.agree.value = '1';
-                    form.submit();
-                } else {
-                    // 備援方案：若無預設表單，則原生點擊切換
-                    window.location.href = "https://enzanso-reservation.jp";
-                }
-            }""")
-            
-            # 3. 給予網頁充足的轉址與樣式下載時間
-            print(" -> Waiting for 10月 official stylesheets and assets to complete rendering...")
+            print(" -> Waiting for 10月 official stylesheets to complete rendering...")
             page.wait_for_timeout(6000)
             
-            # 4. 拍照存檔
+            # 拍照存檔
             page.screenshot(path="screenshot.png", full_page=True)
             browser.close()
-            print("🟢 [Playwright] 10月 snapshot captured successfully.")
+            print("🟢 [Playwright] October snapshot successfully saved.")
     except Exception as e:
-        print(f"❌ [Playwright Error] Human simulation failed: {e}")
+        print(f"❌ [Playwright Error] Subsystem failed: {e}")
 
 def send_alert_email(current_status_text, is_daily_report=False):
     """Sends custom notification layout strictly compliant with RFC 2387 Email Protocols"""
-    # 💡 使用相容性最高、最不會被伺服器誤判吃信的 alternative 容器作為主體
     msg = MIMEMultipart('alternative')
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
@@ -108,20 +89,18 @@ def send_alert_email(current_status_text, is_daily_report=False):
         </html>
         """
         
-        # 💡 圖文內嵌黃金結構：建立 nested related 容器
         msg_related = MIMEMultipart('related')
         msg_related.attach(MIMEText(html_content, 'html', 'utf-8'))
         
         if os.path.exists("screenshot.png"):
             try:
                 with open("screenshot.png", "rb") as f:
-                    # 💡 精準編碼，防止圖片流在中途破碎變叉叉破圖
                     image = MIMEImage(f.read(), _subtype="png")
                     encoders.encode_base64(image)
-                    image.add_header('Content-ID', '<calendar_image>') # 帶上 RFC 規定的角括號
+                    image.add_header('Content-ID', '<calendar_image>') 
                     image.add_header('Content-Disposition', 'inline', filename='screenshot.png')
                     msg_related.attach(image)
-                    print("🟢 [MIME PROCESS] Base64 Image nested safely with bracketed Content-ID.")
+                    print("🟢 [MIME PROCESS] Base64 Image nested safely.")
             except Exception as e:
                 print(f"❌ [MIME ERROR] Image attachment encoding failed: {e}")
         else:
@@ -149,7 +128,6 @@ def send_alert_email(current_status_text, is_daily_report=False):
         """
         msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-    # 🔴 您 Version 1 最核心、穩定不變的雙保險 SMTP 寄信邏輯
     smtp_target = "://gmail.com"
     try:
         socket.gethostbyname(smtp_target)
@@ -174,7 +152,6 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
-    # 💡 100% 保留原本 Jupyter 穩定的 requests 爬蟲文字解析邏輯
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -184,7 +161,6 @@ def check_oyari(mode="check"):
     try:
         session.get(URL_BASE, timeout=15)
         payload = {"p": "30", "y": "2026", "m": "10", "agree": "1"}
-        # 直接存取實體端點獲取乾淨數據
         res = session.post("https://enzanso-reservation.jp", data=payload, timeout=15)
         
         res.encoding = 'utf-8'
@@ -206,7 +182,26 @@ def check_oyari(mode="check"):
                     
                     if mode == "daily":
                         print(f"Executing daily summary check. Status: {cell_text_clean}")
-                        # 先跑 Playwright 真實模擬點擊完成截圖，再寄信
                         run_playwright_screenshot()
                         send_alert_email(cell_text_clean, is_daily_report=True)
                     else:
+                        if "阻" in cell_text_clean or "満" in cell_text_clean or "满" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
+                            print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
+                        else:
+                            print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
+                            send_alert_email(cell_text_clean, is_daily_report=False)
+                    break
+                    
+        if not found_day and mode == "daily":
+            run_playwright_screenshot()
+            send_alert_email("Checked (October 3rd text parse missing, please verify via screenshot below)", is_daily_report=True)
+            
+    except Exception as e:
+        print("Cloud inspection node error:", e)
+
+if __name__ == "__main__":
+    run_mode = "check"
+    if len(sys.argv) > 1:
+        if "daily" in sys.argv:
+            run_mode = "daily"
+    check_oyari(mode=run_mode)
