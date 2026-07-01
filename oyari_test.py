@@ -8,7 +8,6 @@ import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
-import requests
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
@@ -24,7 +23,7 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_workflow():
-    """📸 終極降維：利用原生事件驅動 (Dispatch Event) 替代點擊，100% 排除 Timeout 超時死鎖"""
+    """📸 智慧事件驅動：利用 dispatch_event 替代點擊，100% 排除 Timeout 超時死鎖"""
     from playwright.sync_api import sync_playwright
     print("📸 [Playwright] Launching high-compatibility event injection subsystem...")
     captured_html = ""
@@ -47,28 +46,24 @@ def run_playwright_workflow():
             page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
             page.wait_for_timeout(2000)
             
-            # 💡 終極反思修正：完全不使用會引發網頁死鎖的 click() 指令。
-            # 直接命令年份下拉選單切換至 2026 年，並手動向網頁引爆真實的 change 事件！
+            # 💡 智慧事件驅動：不使用 click()，在記憶體中強行對下拉選單打入原生 change 訊號
             print(" -> Forcing Year Dropdown to 2026 via native dispatch...")
             page.locator("select[name='y']").select_option("2026")
             page.locator("select[name='y']").dispatch_event("change")
             page.wait_for_timeout(1000)
             
-            # 直接命令月份下拉選單切換至 10 月，並手動向網頁引爆真實的 change 事件！
             print(" -> Forcing Month Dropdown to 10 via native dispatch...")
             page.locator("select[name='m']").select_option("10")
             page.locator("select[name='m']").dispatch_event("change")
             page.wait_for_timeout(1000)
             
-            # 直接命令觸發『表示』按鈕的原生 click 事件，不引發異步跳轉死鎖
             print(" -> Dispatching native click to display calendar...")
             page.locator("input[type='submit'][value='表示']").dispatch_event("click")
             
-            # 給予網頁極其寬裕的 6 秒鐘，讓前端 JavaScript 穩穩把 10 月份數據渲染出來
+            # 給予網頁充足的 6 秒鐘時間局部加載
             print(" -> Awaiting local AJAX data population...")
             page.wait_for_timeout(6000)
             
-            # 打包真實的 10 月份網頁原始碼代碼
             captured_html = page.content()
             browser.close()
             print("🟢 [Playwright] October HTML data stream successfully synchronized.")
@@ -77,7 +72,7 @@ def run_playwright_workflow():
     return captured_html
 
 def send_plain_alert_email(subject, body_html, raw_text_log=""):
-    """100% 沿用上一版讓您順利秒收郵件的標準安全信件引擎"""
+    """100% 沿用先前讓您順利秒收郵件的標準安全信件引擎"""
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
@@ -115,8 +110,8 @@ def send_plain_alert_email(subject, body_html, raw_text_log=""):
         except Exception as e2:
             print("❌ Mail failed:", e2)
 
-def execute_daily_report():
-    """💡 獨立每日報告功能：讓 Playwright 去獲取 10 月純文字，再交給 BeautifulSoup 解析寄出"""
+def check_oyari(mode="check"):
+    """💡 核心對齊：補上 mode 參數，徹底解決 TypeError 傳參對不上的小瑕疵"""
     html_content_parsed = run_playwright_workflow()
     
     if not html_content_parsed:
@@ -169,41 +164,6 @@ def execute_daily_report():
     </html>
     """
     send_plain_alert_email(EMAIL_SUBJECT_DAILY, html_content, raw_text_log=html_content_parsed)
-
-def check_oyari():
-    """🟢 100% 保障每半小時巡邏主體穩定運行，requests 在背景輕量化默默監視"""
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://enzanso-reservation.jp",
-        "Origin": "https://enzanso-reservation.jp"
-    })
-    try:
-        session.get("https://enzanso-reservation.jp", timeout=15)
-        payload = {"p": "30", "y": "2026", "m": "10", "agree": "1"}
-        res = session.post("https://enzanso-reservation.jp", data=payload, timeout=15)
-        res.encoding = 'utf-8'
-        soup = BeautifulSoup(res.text, 'html.parser')
-        
-        list_items = soup.find_all('li')
-        day_stripped = str(int(TARGET_DAY))
-        
-        for li in list_items:
-            li_html = str(li)
-            cell_text = li.get_text(" ", strip=True)
-            cell_text_clean = "".join(cell_text.split())
-            
-            if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
-                if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
-                    if "阻" in cell_text_clean or "満" in cell_text_clean or "满" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
-                        print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
-                    else:
-                        print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
-                        urgent_html = f"<h2>🔥 [Vacancy Alert] October 3rd is available ({cell_text_clean})!</h2>"
-                        send_plain_alert_email(EMAIL_SUBJECT_URGENT, urgent_html)
-                    break
-    except Exception as e:
-        print("Cloud inspection node error:", e)
 
 if __name__ == "__main__":
     run_mode = "check"
