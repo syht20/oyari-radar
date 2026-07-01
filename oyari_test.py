@@ -26,24 +26,36 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_rendering(html_source):
-    """📸 終極修正：直接將 requests 成功的 10月 HTML 原始碼注入瀏覽器進行本地高畫質拍照"""
+    """📸 核心修正：將 HTML 注入瀏覽器，並強制同步 Headers 確保 CSS 與字體完美下載"""
     from playwright.sync_api import sync_playwright
     print("📸 [Playwright] Initializing secure render subsystem...")
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
+            # 移除自動化機器人特徵
+            browser = p.chromium.launch(headless=True, args=[
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ])
+            
+            # 💡 終極反思修正：Playwright 必須攜帶與 requests 一模一樣的偽裝，下載 CSS 才不會被網站阻擋
             context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                extra_http_headers={
+                    "Referer": URL_BASE,
+                    "Origin": "https://enzanso-reservation.jp"
+                },
                 viewport={"width": 1280, "height": 1200},
-                locale="zh-TW",
-                timezone_id="Asia/Taipei"
+                locale="ja-JP",       # 鎖定日本地區語系
+                timezone_id="Asia/Tokyo"
             )
             page = context.new_page()
             
-            # 🔥 核心繞過：將您的 requests 核心拿到的 10 月網頁字串，直接灌進虛擬瀏覽器中渲染
-            print(" -> Injecting 10月 target HTML code directly into browser memory...")
-            page.set_content(html_source, wait_until="networkidle")
+            print(" -> Injecting 10月 target HTML and downloading official stylesheets...")
+            # 帶入官方基底網址，讓網頁自動穿上正確的日曆外殼樣式
+            page.set_content(html_source, wait_until="networkidle", base_url=URL_BASE)
             
-            # 給予中日文字體與 CSS 樣式定格渲染的緩衝時間
+            # 給予 4 秒鐘定格，確保圖片與日曆漢字完全渲染完畢
             page.wait_for_timeout(4000)
             
             # 拍照存檔
@@ -148,7 +160,8 @@ def check_oyari(mode="check"):
         payload = {"p": "30", "y": "2026", "m": "10", "agree": "1"}
         res = session.post("https://enzanso-reservation.jp", data=payload, timeout=15)
         
-        # 💡 將您 Jupyter 成功拿到的 res.text（10月的完整HTML）存留下來
+        # 強制指定 utf-8 編理解碼，擊碎亂碼
+        res.encoding = 'utf-8'
         html_source_10 = res.text
         
         soup = BeautifulSoup(html_source_10, 'html.parser')
@@ -169,7 +182,7 @@ def check_oyari(mode="check"):
                     
                     if mode == "daily":
                         print(f"Executing daily summary check. Status: {cell_text_clean}")
-                        # 💡 只有在要寄信前，才把剛才現成拿到的 10月 HTML 送去拍照，萬無一失！
+                        # 核心防禦：確認進入 daily 模式才去畫圖
                         run_playwright_rendering(html_source_10)
                         send_alert_email(cell_text_clean, is_daily_report=True)
                     else:
@@ -181,7 +194,6 @@ def check_oyari(mode="check"):
                     break
                     
         if not found_day and mode == "daily":
-            # 備援拍照
             run_playwright_rendering(html_source_10)
             send_alert_email("Checked (Data unparsed, please verify link manually)", is_daily_report=True)
             
@@ -189,6 +201,7 @@ def check_oyari(mode="check"):
         print("Cloud inspection node error:", e)
 
 if __name__ == "__main__":
+    # 💡 終極反思核心修正：精確提取單一字串參數，100% 解決縮排與模式錯亂問題
     run_mode = "check"
     if len(sys.argv) > 1:
         if sys.argv[1] == "daily":
