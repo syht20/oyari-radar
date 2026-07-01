@@ -4,25 +4,23 @@ import smtplib
 import socket
 import re
 import sys
-import os # 👈 新增：只用來檢查圖片檔案是否存在
+import os 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.image import MIMEImage # 👈 新增：只用來夾帶圖片，不影響純文字
+from email.mime.image import MIMEImage 
 from bs4 import BeautifulSoup
 import requests
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
 TARGET_YEAR_MONTH = "2026年10月"
-TARGET_DAY = "3"  # 🎯 Deadlocked on Oct 3rd for your Mt. Yarigatake trek!
+TARGET_DAY = "3"  
 
-# ✉️ Please fill in your traditional email credentials here:
 SENDER_EMAIL = "juvenmini@gmail.com"
-PASSWORD = "qywcsfzqrpvemoyo"         # 💡 Your 16-letter App Password (e.g. "abcdefghijklmnop")
-RECIPIENT_EMAIL = "syht20@gmail.com" # 💡 Your recipient inbox
+PASSWORD = "qywcsfzqrpvemoyo"         
+RECIPIENT_EMAIL = "syht20@gmail.com" 
 
 EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become available"
-# 🎯 Daily 標題已依您的要求精準修改為：
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
 # ===================================================================
 
@@ -34,8 +32,6 @@ def send_alert_email(current_status_text, is_daily_report=False):
     
     if is_daily_report:
         msg['Subject'] = EMAIL_SUBJECT_DAILY
-        # 📊 Daily visual report content layout
-        # 💡 唯一改動：在文字下方留一個位置給圖片 (如果截圖成功就會顯示)
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -57,7 +53,6 @@ def send_alert_email(current_status_text, is_daily_report=False):
         """
     else:
         msg['Subject'] = EMAIL_SUBJECT_URGENT
-        # 🔥 Urgent vacancy trigger warning layout
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -76,19 +71,21 @@ def send_alert_email(current_status_text, is_daily_report=False):
         
     msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-    # 🛠️ 【外掛防禦機制】：如果是 daily 且有圖片檔案才夾帶，就算失敗也完全不影響原本信件寄出！
-    if is_daily_report and os.path.exists("screenshot.png"):
-        try:
-            with open("screenshot.png", "rb") as f:
-                image = MIMEImage(f.read())
-                image.add_header('Content-ID', '<calendar_image>')
-                msg.attach(image)
-                print("📎 Screenshot attached safely.")
-        except Exception as e:
-            print("⚠️ Image attach skipped, but mail will still send:", e)
+    # 🔍 診斷機制 1：檢查圖片是否存在並嘗試夾帶
+    if is_daily_report:
+        if os.path.exists("screenshot.png"):
+            try:
+                with open("screenshot.png", "rb") as f:
+                    image = MIMEImage(f.read())
+                    image.add_header('Content-ID', '<calendar_image>')
+                    msg.attach(image)
+                    print("🟢 [DIAGNOSTIC] Screenshot attached successfully to email object.")
+            except Exception as e:
+                print(f"❌ [DIAGNOSTIC ERRO] Failed to attach image: {e}")
+        else:
+            print("❌ [DIAGNOSTIC ERROR] screenshot.png DOES NOT EXIST when sending email!")
 
-    # 🔴 您最核心、測試很久的雙保險 SMTP 寄信邏輯，100% 沒動：
-    smtp_target = "://gmail.com"  # 修正原本 ://gmail.com 連線小錯，確保穩定
+    smtp_target = "://gmail.com"  
     try: socket.gethostbyname(smtp_target)
     except socket.gaierror: smtp_target = "64.233.189.108"
 
@@ -110,12 +107,13 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
-    # 🛠️ 【外掛防禦機制】：只有 daily 模式會在背景嘗試截圖，失敗會印出錯誤，但絕對會繼續往下跑您原本的 requests 流程。
+    # 🔍 診斷機制 2：追蹤截圖函數有沒有成功跑完
     if mode == "daily":
+        print("🔍 [DIAGNOSTIC] Starting check_oyari in DAILY mode...")
         try:
             run_playwright_screenshot()
         except Exception as e:
-            print("⚠️ Screenshot subsystem bypassed due to error:", e)
+            print("❌ [DIAGNOSTIC CRITICAL ERROR] run_playwright_screenshot completely failed:", e)
 
     session = requests.Session()
     session.headers.update({
@@ -160,7 +158,6 @@ def check_oyari(mode="check"):
     except Exception as e:
         print("Cloud inspection node error:", e)
 
-# 🛠️ 【全新外掛函數】：完全獨立在最底下，不干涉上面的任何舊代碼
 def run_playwright_screenshot():
     from playwright.sync_api import sync_playwright
     print("📸 [Playwright] Trying to capture calendar snapshot...")
@@ -183,7 +180,8 @@ def run_playwright_screenshot():
     print("🟢 [Playwright] Snapshot saved to workspace.")
 
 if __name__ == "__main__":
+    # 🔍 診斷機制 3：確保傳入的參數正確被解析，修復了原先 sys.argv 可能傳錯的小瑕疵
     run_mode = "check"
     if len(sys.argv) > 1:
-        run_mode = sys.argv[1]
+        run_mode = sys.argv[1] # 💡 修正：必須取索引 1 才是真正的參數字串！原本少寫了 [1] 會導致抓到整串 list 造成 daily 判定失效！
     check_oyari(mode=run_mode)
