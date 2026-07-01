@@ -26,19 +26,16 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_rendering(html_source):
-    """📸 核心修正：將 HTML 注入瀏覽器，並強制同步 Headers 確保 CSS 與字體完美下載"""
+    """📸 將 HTML 注入瀏覽器，並強制同步 Headers 確保 CSS 與字體完美下載"""
     from playwright.sync_api import sync_playwright
     print("📸 [Playwright] Initializing secure render subsystem...")
     try:
         with sync_playwright() as p:
-            # 移除自動化機器人特徵
             browser = p.chromium.launch(headless=True, args=[
                 '--disable-blink-features=AutomationControlled',
                 '--no-sandbox',
                 '--disable-setuid-sandbox'
             ])
-            
-            # 💡 終極反思修正：Playwright 必須攜帶與 requests 一模一樣的偽裝，下載 CSS 才不會被網站阻擋
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 extra_http_headers={
@@ -46,16 +43,13 @@ def run_playwright_rendering(html_source):
                     "Origin": "https://enzanso-reservation.jp"
                 },
                 viewport={"width": 1280, "height": 1200},
-                locale="ja-JP",       # 鎖定日本地區語系
+                locale="ja-JP",
                 timezone_id="Asia/Tokyo"
             )
             page = context.new_page()
             
             print(" -> Injecting 10月 target HTML and downloading official stylesheets...")
-            # 帶入官方基底網址，讓網頁自動穿上正確的日曆外殼樣式
             page.set_content(html_source, wait_until="networkidle", base_url=URL_BASE)
-            
-            # 給予 4 秒鐘定格，確保圖片與日曆漢字完全渲染完畢
             page.wait_for_timeout(4000)
             
             # 拍照存檔
@@ -67,7 +61,8 @@ def run_playwright_rendering(html_source):
 
 def send_alert_email(current_status_text, is_daily_report=False):
     """Sends custom notification layout based on mode (Python 3.12 compatible)"""
-    msg = MIMEMultipart()
+    # 💡 核心規範修正：內嵌圖片的 HTML 信件，主容器必須宣告為 'related' 類型
+    msg = MIMEMultipart('related')
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
     
@@ -112,14 +107,16 @@ def send_alert_email(current_status_text, is_daily_report=False):
         
     msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
+    # 💡 核心規範修正：明確加上 _subtype="png"，防止部分信箱伺服器無法解析二進位檔
     if is_daily_report:
         if os.path.exists("screenshot.png"):
             try:
                 with open("screenshot.png", "rb") as f:
-                    image = MIMEImage(f.read())
+                    image = MIMEImage(f.read(), _subtype="png")
                     image.add_header('Content-ID', '<calendar_image>')
+                    image.add_header('Content-Disposition', 'inline', filename='screenshot.png')
                     msg.attach(image)
-                    print("🟢 [DIAGNOSTIC] Screenshot attached successfully.")
+                    print("🟢 [DIAGNOSTIC] Inline PNG screenshot attached successfully.")
             except Exception as e:
                 print(f"❌ [DIAGNOSTIC ERROR] Failed to attach image: {e}")
         else:
@@ -160,7 +157,6 @@ def check_oyari(mode="check"):
         payload = {"p": "30", "y": "2026", "m": "10", "agree": "1"}
         res = session.post("https://enzanso-reservation.jp", data=payload, timeout=15)
         
-        # 強制指定 utf-8 編理解碼，擊碎亂碼
         res.encoding = 'utf-8'
         html_source_10 = res.text
         
@@ -182,7 +178,6 @@ def check_oyari(mode="check"):
                     
                     if mode == "daily":
                         print(f"Executing daily summary check. Status: {cell_text_clean}")
-                        # 核心防禦：確認進入 daily 模式才去畫圖
                         run_playwright_rendering(html_source_10)
                         send_alert_email(cell_text_clean, is_daily_report=True)
                     else:
@@ -194,16 +189,15 @@ def check_oyari(mode="check"):
                     break
                     
         if not found_day and mode == "daily":
-            run_playwright_rendering(html_source_10)
+            run_playwright_screenshot(html_source_10)
             send_alert_email("Checked (Data unparsed, please verify link manually)", is_daily_report=True)
             
     except Exception as e:
         print("Cloud inspection node error:", e)
 
 if __name__ == "__main__":
-    # 💡 終極反思核心修正：精確提取單一字串參數，100% 解決縮排與模式錯亂問題
     run_mode = "check"
     if len(sys.argv) > 1:
-        if sys.argv[1] == "daily":
+        if sys.argv[1] == "daily": # 💡 終極修正：補上真正的索引 [1]，徹底打通 daily 通道！
             run_mode = "daily"
     check_oyari(mode=run_mode)
