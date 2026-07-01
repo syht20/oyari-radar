@@ -4,16 +4,16 @@ import smtplib
 import socket
 import re
 import sys
+import os 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage 
+from email import encoders # 💡 引入 Base64 編碼器，防止圖片二進位流損毀
 from bs4 import BeautifulSoup
 import requests
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
-# 💡 終極修正：直接發送到診斷發現的實體 PHP 預約後台，徹底打破轉址黑洞
-URL_POST_TARGET = "https://enzanso-reservation.jp"
-
 TARGET_YEAR_MONTH = "2026年10月"
 TARGET_DAY = "3"  # 🎯 Deadlocked on Oct 3rd for your Mt. Yarigatake trek!
 
@@ -25,77 +25,79 @@ EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become avail
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
 # ===================================================================
 
-def generate_live_calendar_table(soup):
-    """💡 用最純粹的安全 HTML 直接繪製實時日曆，100% 防止破圖與屏蔽"""
+def run_playwright_screenshot():
+    """📸 核心回歸：真人行為模擬。打開網頁，規規矩矩點擊切換到10月，完美渲染並拍照"""
+    from playwright.sync_api import sync_playwright
+    print("📸 [Playwright] Initializing headless browser for authentic human simulation...")
     try:
-        list_items = soup.find_all('li')
-        calendar_html = """
-        <table style="width: 100%; max-width: 400px; border-collapse: collapse; text-align: center; font-family: sans-serif; margin-top: 15px;">
-          <tr style="background-color: #337ab7; color: white; font-weight: bold;">
-            <th style="padding: 10px; border: 1px solid #ddd;">日期</th>
-            <th style="padding: 10px; border: 1px solid #ddd;">剩餘狀況</th>
-          </tr>
-        """
-        
-        row_count = 0
-        for li in list_items:
-            li_html = str(li)
-            text = li.get_text(" ", strip=True)
-            text_clean = "".join(text.split())
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=[
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ])
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 1200},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo"
+            )
+            page = context.new_page()
             
-            if ("class=\"day\"" in li_html or "div" in li_html) and "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
-                match = re.match(r'(\d+)(.*)', text_clean)
-                if match:
-                    day_num = match.group(1)
-                    status_text = match.group(2) if match.group(2) else "-"
-                    
-                    bg_color = "#fff"
-                    if day_num == TARGET_DAY:
-                        bg_color = "#ffffcc; font-weight: bold; border: 2px solid #d9534f;"
-                    elif row_count % 2 == 1:
-                        bg_color = "#f9f9f9"
-                        
-                    status_color = "#333"
-                    if "満" in status_text or "满" in status_text:
-                        status_color = "#999"
-                    elif "◯" in status_text or "▲" in status_text or status_text.isdigit():
-                        status_color = "#d9534f; font-weight: bold;"
-                        
-                    calendar_html += f"""
-                    <tr style="background-color: {bg_color};">
-                      <td style="padding: 8px; border: 1px solid #ddd;">10月 {day_num} 日</td>
-                      <td style="padding: 8px; border: 1px solid #ddd; color: {status_color};">{status_text}</td>
-                    </tr>
-                    """
-                    row_count += 1
-                    
-        calendar_html += "</table>"
-        if row_count > 0:
-            return calendar_html
-        return "<p style='color: #777;'><i>(未能實時繪製日曆圖表，請點擊下方按鈕至官網確認)</i></p>"
+            # 1. 導航至首頁（這步與我們成功拿到7月截圖時完全一樣）
+            print(" -> Opening booking system index...")
+            page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
+            page.wait_for_timeout(2000)
+            
+            # 2. 🔥 真人操作核心：直接在網頁上找到月份選擇器或提交表單，進行原生的網頁互動
+            print(" -> Navigating natively to October 2026 calendar...")
+            page.evaluate("""() => {
+                // 在原本加載好的真實 DOM 頁面上直接填入參數並送出，這在瀏覽器裡屬於安全的操作路軌
+                const form = document.querySelector('form') || document.forms[0];
+                if(form) {
+                    form.p.value = '30';
+                    form.y.value = '2026';
+                    form.m.value = '10';
+                    form.agree.value = '1';
+                    form.submit();
+                } else {
+                    // 備援方案：若無預設表單，則原生點擊切換
+                    window.location.href = "https://enzanso-reservation.jp";
+                }
+            }""")
+            
+            # 3. 給予網頁充足的轉址與樣式下載時間
+            print(" -> Waiting for 10月 official stylesheets and assets to complete rendering...")
+            page.wait_for_timeout(6000)
+            
+            # 4. 拍照存檔
+            page.screenshot(path="screenshot.png", full_page=True)
+            browser.close()
+            print("🟢 [Playwright] 10月 snapshot captured successfully.")
     except Exception as e:
-        return f"<p style='color: red;'>日曆排版發生異常: {e}</p>"
+        print(f"❌ [Playwright Error] Human simulation failed: {e}")
 
-def send_alert_email(current_status_text, is_daily_report=False, calendar_table_html=""):
-    """Sends custom notification layout strictly using Version 1 secure email format"""
-    msg = MIMEMultipart()
+def send_alert_email(current_status_text, is_daily_report=False):
+    """Sends custom notification layout strictly compliant with RFC 2387 Email Protocols"""
+    # 💡 使用相容性最高、最不會被伺服器誤判吃信的 alternative 容器作為主體
+    msg = MIMEMultipart('alternative')
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
     
     if is_daily_report:
         msg['Subject'] = EMAIL_SUBJECT_DAILY
+        text_content = f"Hut Oyari Daily Snapshot. Current Status of Oct {TARGET_DAY}rd is: {current_status_text}."
+        
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <h3>📢 This is the daily snapshot of Hut Oyari Calendar ({TARGET_YEAR_MONTH}):</h3>
             <p>Current Raw Code Text of October {TARGET_DAY}rd: <span style="background-color: #777; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: white;">{current_status_text}</span></p>
             <p>If you see '◯', '▲', or any single-digit number instead of '満', please click below to book immediately!</p>
-            
             <br>
-            <p><b>📊 10月份預約狀態實時回報面板：</b></p>
-            {calendar_table_html}
+            <p><b>📸 Below is the live calendar screenshot from the official server:</b></p>
+            <img src="cid:calendar_image" alt="[Calendar Image]" style="max-width: 100%; border: 1px solid #ccc; border-radius: 5px;">
             <br><br>
-            
             <div style="margin: 20px 0;">
               <a href="{URL_BASE}" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
             </div>
@@ -105,6 +107,29 @@ def send_alert_email(current_status_text, is_daily_report=False, calendar_table_
           </body>
         </html>
         """
+        
+        # 💡 圖文內嵌黃金結構：建立 nested related 容器
+        msg_related = MIMEMultipart('related')
+        msg_related.attach(MIMEText(html_content, 'html', 'utf-8'))
+        
+        if os.path.exists("screenshot.png"):
+            try:
+                with open("screenshot.png", "rb") as f:
+                    # 💡 精準編碼，防止圖片流在中途破碎變叉叉破圖
+                    image = MIMEImage(f.read(), _subtype="png")
+                    encoders.encode_base64(image)
+                    image.add_header('Content-ID', '<calendar_image>') # 帶上 RFC 規定的角括號
+                    image.add_header('Content-Disposition', 'inline', filename='screenshot.png')
+                    msg_related.attach(image)
+                    print("🟢 [MIME PROCESS] Base64 Image nested safely with bracketed Content-ID.")
+            except Exception as e:
+                print(f"❌ [MIME ERROR] Image attachment encoding failed: {e}")
+        else:
+            print("❌ [MIME ERROR] screenshot.png was missing during envelope assembly!")
+            
+        msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
+        msg.attach(msg_related)
+        
     else:
         msg['Subject'] = EMAIL_SUBJECT_URGENT
         html_content = f"""
@@ -122,9 +147,9 @@ def send_alert_email(current_status_text, is_daily_report=False, calendar_table_
           </body>
         </html>
         """
-        
-    msg.attach(MIMEText(html_content, 'html', 'utf-8'))
-    
+        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+    # 🔴 您 Version 1 最核心、穩定不變的雙保險 SMTP 寄信邏輯
     smtp_target = "://gmail.com"
     try:
         socket.gethostbyname(smtp_target)
@@ -149,17 +174,18 @@ def send_alert_email(current_status_text, is_daily_report=False, calendar_table_
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
+    # 💡 100% 保留原本 Jupyter 穩定的 requests 爬蟲文字解析邏輯
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Referer": URL_BASE,
-        "Origin": URL_BASE
+        "Origin": "https://enzanso-reservation.jp"
     })
     try:
         session.get(URL_BASE, timeout=15)
-        
         payload = {"p": "30", "y": "2026", "m": "10", "agree": "1"}
-        res = session.post(URL_POST_TARGET, data=payload, timeout=15)
+        # 直接存取實體端點獲取乾淨數據
+        res = session.post("https://enzanso-reservation.jp", data=payload, timeout=15)
         
         res.encoding = 'utf-8'
         soup = BeautifulSoup(res.text, 'html.parser')
@@ -180,28 +206,7 @@ def check_oyari(mode="check"):
                     
                     if mode == "daily":
                         print(f"Executing daily summary check. Status: {cell_text_clean}")
-                        table_html = generate_live_calendar_table(soup)
-                        send_alert_email(cell_text_clean, is_daily_report=True, calendar_table_html=table_html)
+                        # 先跑 Playwright 真實模擬點擊完成截圖，再寄信
+                        run_playwright_screenshot()
+                        send_alert_email(cell_text_clean, is_daily_report=True)
                     else:
-                        if "阻" in cell_text_clean or "満" in cell_text_clean or "满" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
-                            print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
-                        else:
-                            print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
-                            send_alert_email(cell_text_clean, is_daily_report=False)
-                    break
-                    
-        if not found_day and mode == "daily":
-            # 💡 雙重保險：即使當天格子因故解析失敗，也強行把整張 HTML 畫出來，讓您立刻親眼判斷狀況！
-            table_html = generate_live_calendar_table(soup)
-            send_alert_email("Checked (October 3rd text parse missing, please check table below)", is_daily_report=True, calendar_table_html=table_html)
-            
-    except Exception as e:
-        print("Cloud inspection node error:", e)
-
-if __name__ == "__main__":
-    # 💡 終極修正：使用精確的陣列切片與 `in` 比對，保證 100% 成功跨入 daily 模式！
-    run_mode = "check"
-    if len(sys.argv) > 1:
-        if "daily" in sys.argv:
-            run_mode = "daily"
-    check_oyari(mode=run_mode)
