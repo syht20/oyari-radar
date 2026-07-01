@@ -14,11 +14,12 @@ import requests
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
 TARGET_YEAR_MONTH = "2026年10月"
-TARGET_DAY = "3"  
+TARGET_DAY = "3"  # 🎯 Deadlocked on Oct 3rd for your Mt. Yarigatake trek!
 
+# ✉️ Please fill in your traditional email credentials here:
 SENDER_EMAIL = "juvenmini@gmail.com"
-PASSWORD = "qywcsfzqrpvemoyo"         
-RECIPIENT_EMAIL = "syht20@gmail.com" 
+PASSWORD = "qywcsfzqrpvemoyo"         # 💡 Your 16-letter App Password (e.g. "abcdefghijklmnop")
+RECIPIENT_EMAIL = "syht20@gmail.com" # 💡 Your recipient inbox
 
 EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become available"
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
@@ -32,6 +33,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
     
     if is_daily_report:
         msg['Subject'] = EMAIL_SUBJECT_DAILY
+        # 📊 Daily visual report content layout
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -40,7 +42,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
             <p>If you see '◯', '▲', or any single-digit number instead of '満', please click below to book immediately!</p>
             <br>
             <p><b>📸 Below is the live calendar screenshot:</b></p>
-            <img src="cid:calendar_image" alt="[Calendar Image]" style="max-width: 100%; border: 1px solid #ccc;">
+            <img src="cid:calendar_image" alt="[Calendar Image]" style="max-width: 100%; border: 1px solid #ccc; border-radius: 5px;">
             <br><br>
             <div style="margin: 20px 0;">
               <a href="{URL_BASE}" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
@@ -53,6 +55,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
         """
     else:
         msg['Subject'] = EMAIL_SUBJECT_URGENT
+        # 🔥 Urgent vacancy trigger warning layout
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -71,7 +74,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
         
     msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-    # 🔍 診斷機制 1：檢查圖片是否存在並嘗試夾帶
+    # 🛠️ 【安全外掛機制】：檢查圖片檔案是否存在並嘗試嵌入。即使失敗，也絕對會保證純文字信順利發出
     if is_daily_report:
         if os.path.exists("screenshot.png"):
             try:
@@ -81,11 +84,11 @@ def send_alert_email(current_status_text, is_daily_report=False):
                     msg.attach(image)
                     print("🟢 [DIAGNOSTIC] Screenshot attached successfully to email object.")
             except Exception as e:
-                print(f"❌ [DIAGNOSTIC ERRO] Failed to attach image: {e}")
+                print(f"❌ [DIAGNOSTIC ERROR] Failed to attach image: {e}")
         else:
             print("❌ [DIAGNOSTIC ERROR] screenshot.png DOES NOT EXIST when sending email!")
 
-    smtp_target = "://gmail.com"  
+    smtp_target = "://gmail.com"
     try: socket.gethostbyname(smtp_target)
     except socket.gaierror: smtp_target = "64.233.189.108"
 
@@ -107,7 +110,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
-    # 🔍 診斷機制 2：追蹤截圖函數有沒有成功跑完
+    # 🛠️ 【安全外掛機制】：只有每日報告模式會在背景嘗試截圖，失敗不會干擾原來的 requests 執行
     if mode == "daily":
         print("🔍 [DIAGNOSTIC] Starting check_oyari in DAILY mode...")
         try:
@@ -158,30 +161,43 @@ def check_oyari(mode="check"):
     except Exception as e:
         print("Cloud inspection node error:", e)
 
+# ===================================================================
+# 🛡️ 【人類偽裝完美版截圖功能】完全獨立於最底部
+# ===================================================================
 def run_playwright_screenshot():
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Trying to capture calendar snapshot...")
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(URL_BASE, timeout=20000)
-        page.evaluate("""() => {
-            const form = document.createElement('form'); form.method = 'POST'; form.action = 'https://enzanso-reservation.jp';
-            const pIn = document.createElement('input'); pIn.type = 'hidden'; pIn.name = 'p'; pIn.value = '30';
-            const yIn = document.createElement('input'); yIn.type = 'hidden'; yIn.name = 'y'; yIn.value = '2026';
-            const mIn = document.createElement('input'); mIn.type = 'hidden'; mIn.name = 'm'; mIn.value = '10';
-            const aIn = document.createElement('input'); aIn.type = 'hidden'; aIn.name = 'agree'; aIn.value = '1';
-            form.appendChild(pIn); form.appendChild(yIn); form.appendChild(mIn); form.appendChild(aIn);
-            document.body.appendChild(form); form.submit();
-        }""")
-        page.wait_for_timeout(4000)
-        page.screenshot(path="screenshot.png", full_page=True)
-        browser.close()
-    print("🟢 [Playwright] Snapshot saved to workspace.")
-
-if __name__ == "__main__":
-    # 🔍 診斷機制 3：確保傳入的參數正確被解析，修復了原先 sys.argv 可能傳錯的小瑕疵
-    run_mode = "check"
-    if len(sys.argv) > 1:
-        run_mode = sys.argv[1] # 💡 修正：必須取索引 1 才是真正的參數字串！原本少寫了 [1] 會導致抓到整串 list 造成 daily 判定失效！
-    check_oyari(mode=run_mode)
+    print("📸 [Playwright] Trying to capture calendar snapshot with Anti-Bot bypass...")
+    try:
+        with sync_playwright() as p:
+            # 1. 🔍 隱藏自動化痕跡，去除 navigator.webdriver 機器人特徵
+            browser = p.chromium.launch(headless=True, args=[
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ])
+            
+            # 2. 注入真實的 Chrome 指紋環境與視窗寬高
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 1000},
+                locale="zh-TW",
+                timezone_id="Asia/Taipei"
+            )
+            
+            page = context.new_page()
+            
+            # 3. 先訪問首頁建立正常的 Session Cookie 與 訪問來源（Referer）
+            print(" -> Visiting base URL...")
+            page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
+            page.wait_for_timeout(2000)
+            
+            # 4. 🔥 核心繞過：執行 JavaScript 在前端直接提交與您的 requests 相同的 POST Payload 
+            print(" -> Executing anti-bot secure form submission...")
+            page.evaluate("""() => {
+                const form = document.createElement('form'); 
+                form.method = 'POST'; 
+                form.action = 'https://enzanso-reservation.jp';
+                
+                const pIn = document.createElement('input'); pIn.type = 'hidden'; pIn.name = 'p'; pIn.value = '30';
+                const yInput = document.createElement('input'); yInput.type = 'hidden'; yInput.name = 'y'; yInput.value = '2026';
+                const mIn = document.createElement('input'); mIn.type = 'hidden'; mIn.name = 'm'; mIn.value = '10';
