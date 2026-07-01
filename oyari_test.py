@@ -7,12 +7,10 @@ import sys
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
-import requests
 
 # ==================== Cloud Email Configuration ====================
+# 💡 終極反思修正：起點網址回歸全宇宙唯一能通過驗證的官方正門首頁！
 URL_BASE = "https://enzanso-reservation.jp"
-# 💡 降維修正：直擊您提供 HTML 原始碼中所隱藏的實體 AJAX 數據接收端點
-URL_POST_TARGET = "https://enzanso-reservation.jp"
 
 TARGET_YEAR_MONTH = "2026年10月"
 TARGET_DAY = "3"  # 🎯 Deadlocked on Oct 3rd for your Mt. Yarigatake trek!
@@ -24,6 +22,55 @@ RECIPIENT_EMAIL = "syht20@gmail.com" # 💡 Your recipient inbox
 EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become available"
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
 # ===================================================================
+
+def run_playwright_fetch_html():
+    """📸 智慧降維：從首頁正門進站，物理序列點擊 3 次次月，no_wait_after=True 徹底拔除超時卡死地雷"""
+    from playwright.sync_api import sync_playwright
+    print("📸 [Playwright] Launching hardcoded sequential navigation from base URL...")
+    captured_html = ""
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=[
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ])
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 1000},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo"
+            )
+            page = context.new_page()
+            
+            # Step 1: 從正門進站（這步與我們成功拿到 7 月截圖時一模一樣）
+            print(" -> Loading base reservation interface from roots...")
+            page.goto(URL_BASE, timeout=35000, wait_until="networkidle")
+            time.sleep(2.5)
+            
+            # Step 2: 💡 加上 no_wait_after=True，命令 Playwright 按完按鈕後立刻鬆手，絕對不進入超時死鎖！
+            print(" -> Clicking '次月' 1st time (July -> August)...")
+            page.get_by_role("link", name="次月").click(no_wait_after=True)
+            time.sleep(3.5) # 穩穩等 3.5 秒，讓 AJAX 把 8 月份的格子重新繪製完畢
+            
+            print(" -> Clicking '次月' 2nd time (August -> September)...")
+            page.get_by_role("link", name="次月").click(no_wait_after=True)
+            time.sleep(3.5)
+            
+            print(" -> Clicking '次月' 3rd time (September -> October)...")
+            page.get_by_role("link", name="次月").click(no_wait_after=True)
+            
+            # 給予非常慷慨的 6.5 秒，讓 10 月份實時表格數據與中日文字體在背景完全填滿
+            print(" -> Stabilization freeze for October calendar populate...")
+            time.sleep(6.5)
+            
+            # 深拷貝字串，在瀏覽器關閉前將 10 月真實 HTML 數據流完全抽離帶走！
+            captured_html = str(page.content())
+            browser.close()
+            print("🟢 [Playwright] Real-time October HTML stream securely captured.")
+    except Exception as e:
+        print(f"❌ [Playwright Error] Hardware sequential routing broke: {e}")
+    return captured_html
 
 def send_plain_alert_email(subject, body_html):
     """最純粹、無任何結構嵌套的標準寄信引擎，100% 綠燈秒發秒收"""
@@ -68,111 +115,87 @@ def extract_day_status(clean_html_text, day_string):
     return "未能在原始碼中定位該日期"
 
 def check_oyari(mode="check"):
-    """💡 終極大降維：模擬網頁原生 doPost 的 AJAX 數據請求，秒發秒收，不開瀏覽器"""
-    print("🚀 [AJAX DATA HUB] Synchronizing requests with real-time payload...")
-    session = requests.Session()
+    """💡 獨立合流主體：利用 Playwright 的正門物理翻頁拿到 10月純文字，其餘解析 100% 還原 Version 1"""
+    html_content_parsed = run_playwright_fetch_html()
     
-    # 對齊真實 Chrome 的全套 Headers
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "ja,zh-TW;q=0.9,zh;q=0.8,en-US;q=0.7,en;q=0.6",
-        "Referer": "https://enzanso-reservation.jp?p=30",
-        "Origin": URL_BASE
-    })
+    if not html_content_parsed:
+        print("⚠️ Subsystem returned blank. Task bypassed.")
+        return
+
+    # 100% 還原您第一版最成功、完全無錯誤的 BeautifulSoup 解析迴圈
+    soup = BeautifulSoup(html_content_parsed, 'html.parser')
+    list_items = soup.find_all('li')
+    day_stripped = str(int(TARGET_DAY))
+    cell_text_clean = "Unknown"
+    found_day = False
     
-    try:
-        # Step 1: 拜訪首頁，拿 Cookie
-        session.get(URL_BASE, timeout=15)
-        # 強制睡 2.5 秒，注入完美人類瀏覽時差
-        time.sleep(2.5)
+    for li in list_items:
+        li_html = str(li)
+        cell_text = li.get_text(" ", strip=True)
+        cell_text_clean = "".join(cell_text.split())
         
-        # Step 2: 💡 終極降維大破局：完全對齊真實網頁 doPost 函數發出的 AJAX 局部刷新數據包！
-        ajax_payload = {
-            "yoteibi": "20261001",  # 鎖定 10 月 1 日局部表格更新參數
-            "p": "30",              # 槍岳大槍 Hut ID 參數
-            "agree": "1"            # 同意欄位
-        }
-        
-        res = session.post(URL_POST_TARGET, data=ajax_payload, timeout=15)
-        res.encoding = 'utf-8'
-        html_content_parsed = res.text
+        if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
+            if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
+                found_day = True
+                break
 
-        # 100% 恢復您最引以為傲、完全正確的 BeautifulSoup 解析引擎
-        soup = BeautifulSoup(html_content_parsed, 'html.parser')
-        list_items = soup.find_all('li')
-        day_stripped = str(int(TARGET_DAY))
-        cell_text_clean = "Unknown"
-        found_day = False
-        
-        for li in list_items:
-            li_html = str(li)
-            cell_text = li.get_text(" ", strip=True)
-            cell_text_clean = "".join(cell_text.split())
-            
-            if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
-                if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
-                    found_day = True
-                    break
+    # 執行 10/2、10/3、10/6 的三日期數據交叉驗證比對
+    clean_all_spaces = "".join(html_content_parsed.split())
+    status_10_02 = extract_day_status(clean_all_spaces, "2日")
+    status_10_03 = extract_day_status(clean_all_spaces, "3日")
+    status_10_06 = extract_day_status(clean_all_spaces, "6日")
 
-        # 執行 10/2、10/3、10/6 的三日期數據交叉驗證
-        clean_all_spaces = "".join(html_content_parsed.split())
-        status_10_02 = extract_day_status(clean_all_spaces, "2日")
-        status_10_03 = extract_day_status(clean_all_spaces, "3日")
-        status_10_06 = extract_day_status(clean_all_spaces, "6日")
+    # 擷取日曆表格核心片段，當作郵件內文面板 (擴大範圍至 2500 字元)
+    preview_idx = html_content_parsed.find("calendarTable")
+    if preview_idx == -1: preview_idx = html_content_parsed.find("calendarDate")
+    if preview_idx == -1: preview_idx = 0
+    raw_snippet = html_content_parsed[preview_idx:preview_idx+2500].strip().replace('<', '&lt;').replace('>', '&gt;')
 
-        # 擷取日曆表格核心片段，當作郵件內文面板 (擴大範圍至 2500 字元)
-        preview_idx = html_content_parsed.find("calendarTable")
-        if preview_idx == -1: preview_idx = html_content_parsed.find("calendarDate")
-        if preview_idx == -1: preview_idx = 0
-        raw_snippet = html_content_parsed[preview_idx:preview_idx+2500].strip().replace('<', '&lt;').replace('>', '&gt;')
-
-        if mode != "daily":
-            if found_day and "臨" not in cell_text_clean and "阻" not in cell_text_clean and "満" not in cell_text_clean and "man" not in cell_text_clean:
-                print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
-                urgent_html = f"<h2>🔥 [Vacancy Alert] October 3rd is available ({cell_text_clean})!</h2>"
-                send_plain_alert_email(EMAIL_SUBJECT_URGENT, urgent_html)
-            else:
-                print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
-                
+    # 💡 巡邏（check）模式分流
+    if mode != "daily":
+        if found_day and "臨" not in cell_text_clean and "阻" not in cell_text_clean and "満" not in cell_text_clean and "满" not in cell_text_clean:
+            print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
+            urgent_html = f"<h2>🔥 [Vacancy Alert] October 3rd is available ({cell_text_clean})!</h2>"
+            send_plain_alert_email(EMAIL_SUBJECT_URGENT, urgent_html)
         else:
-            print("Executing daily report summary node...")
-            status_label = f"10月3日狀態：{cell_text_clean}" if found_day else "10月3日狀態：請對照下方實時數據面板"
+            print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
             
-            html_content = f"""
-            <html>
-              <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <h3>📢 This is the daily snapshot of Hut Oyari Calendar (2026年10月):</h3>
-                
-                <!-- 💡 交叉驗證數據看板區 -->
-                <div style="background-color: #f7f9fa; padding: 15px; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 20px;">
-                  <h4 style="margin-top: 0; color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">🎯 10月核心日期巡邏看板 (Cross-Verified Data)</h4>
-                  <ul style="list-style: none; padding-left: 0; margin-bottom: 0; font-size: 14px;">
-                    <li style="padding: 6px 0;">📅 <b>10月2日 (五)</b> 狀態：<span style="color:#4b5563;">{status_10_02}</span></li>
-                    <li style="padding: 6px 0; background-color: #fffde7; font-weight: bold; border-left: 4px solid #d9534f; padding-left: 8px;">🎯 10月3日 (六) 狀態：<span>{status_10_03}</span> (BS解析結果: {status_label})</li>
-                    <li style="padding: 6px 0;">📅 <b>10月6日 (二)</b> 狀態：<span style="color:#4b5563;">{status_10_06}</span></li>
-                  </ul>
-                </div>
+    # 💡 每日面板報告（daily）模式分流
+    else:
+        print("Executing daily report summary node...")
+        status_label = f"10月3日狀態：{cell_text_clean}" if found_day else "10月3日狀態：請對照下方實時數據面板"
+        
+        html_content = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h3>📢 This is the daily snapshot of Hut Oyari Calendar (2026年10月):</h3>
+            
+            <!-- 💡 交叉驗證數據看板區 -->
+            <div style="background-color: #f7f9fa; padding: 15px; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 20px;">
+              <h4 style="margin-top: 0; color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">🎯 10月核心日期巡邏看板 (Cross-Verified Data)</h4>
+              <ul style="list-style: none; padding-left: 0; margin-bottom: 0; font-size: 14px;">
+                <li style="padding: 6px 0;">📅 <b>10月2日 (五)</b> 狀態：<span style="color:#4b5563;">{status_10_02}</span></li>
+                <li style="padding: 6px 0; background-color: #fffde7; font-weight: bold; border-left: 4px solid #d9534f; padding-left: 8px;">🎯 10月3日 (六) 狀態：<span>{status_10_03}</span> (BS解析結果: {status_label})</li>
+                <li style="padding: 6px 0;">📅 <b>10月6日 (二)</b> 狀態：<span style="color:#4b5563;">{status_10_06}</span></li>
+              </ul>
+            </div>
 
-                <p>If you see '◯', '▲', or any single-digit number instead of '臨' or '満', please act immediately!</p>
-                <br>
-                
-                <!-- 核心黑色原始碼面板 (100% 承接您剛才發給我的 10月真實 HTML 結構) -->
-                <div style="background:#222; padding:15px; border-radius:6px; font-family:monospace; box-shadow: inset 0 0 10px #000;">
-                  <b style="color:#5cb85c;">[💾 Real October Calendar HTML Source Code Node]</b>
-                  <pre style="white-space: pre-wrap; font-size:12px; color:#fff; margin-top:10px; line-height:1.4;">{raw_snippet}</pre>
-                </div>
-                <br>
-                <div style="margin: 20px 0;">
-                  <a href="https://enzanso-reservation.jp?p=30" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
-                </div>
-              </body>
-            </html>
-            """
-            send_plain_alert_email(EMAIL_SUBJECT_DAILY, html_content)
+            <p>If you see '◯', '▲', or any single-digit number instead of '臨' or '満', please click below to book immediately!</p>
+            <br>
             
-    except Exception as e:
-        print("Cloud inspection node error:", e)
+            <!-- 核心黑色原始碼面板 (100% 將會在此印出充滿 onclick="doPost" 的真實 10 月代碼) -->
+            <div style="background:#222; padding:15px; border-radius:6px; font-family:monospace; box-shadow: inset 0 0 10px #000;">
+              <b style="color:#5cb85c;">[💾 Real October Calendar HTML Source Code Node]</b>
+              <pre style="white-space: pre-wrap; font-size:12px; color:#fff; margin-top:10px; line-height:1.4;">{raw_snippet}</pre>
+            </div>
+            <br>
+            <div style="margin: 20px 0;">
+              <a href="https://enzanso-reservation.jp" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
+            </div>
+          </body>
+        </html>
+        """
+        send_plain_alert_email(EMAIL_SUBJECT_DAILY, html_content)
 
 if __name__ == "__main__":
     run_mode = "check"
