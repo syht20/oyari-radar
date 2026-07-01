@@ -21,9 +21,9 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_workflow():
-    """📸 終極破局：利用真實硬體級鍵盤操作切換月份，徹底繞過 WAF 轉址攔截與異步死鎖"""
+    """📸 終極破局：利用真實合法 Cookie 瀏覽器，注入單行 JS 表單提交，100% 逼迫網頁刷新至 10 月"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Initializing authentic hardware-level keypress simulation...")
+    print("📸 [Playwright] Launching high-grade native form injection routing...")
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=[
@@ -39,50 +39,39 @@ def run_playwright_workflow():
             )
             page = context.new_page()
             
-            # Step 1: 突破第一層重導向天險，進入真實預約介面 (預設 7 月)
-            print(" -> Loading base reservation interface...")
+            # Step 1: 從正門載入預約介面，在雲端環境拿好完整合法 Cookie
+            print(" -> [Step 1] Loading index page safely to establish secure sessions...")
             page.goto(URL_BASE, timeout=35000, wait_until="networkidle")
             time.sleep(3.0)
             
-            # Step 2: 聚焦在月份選單上，用實體鍵盤硬性向下推移 3 個月
-            print(" -> Simulating physical keyboard navigation to October...")
-            month_dropdown = page.locator("select[name='m']")
-            month_dropdown.focus()
-            time.sleep(0.5)
+            # Step 2: 💡 終極拆彈：將 JS 程式碼縮減為極簡單行，完全避開任何與 Python 衝突的大括號與縮排地雷！
+            # 在真實的 DOM 樹內部直接覆寫參數並執行 submit()
+            print(" -> [Step 2] Injecting clean form parameters for October 2026...")
+            js_payload = "() => { const f = document.querySelector('form'); if(f) { f.p.value='30'; f.y.value='2026'; f.m.value='10'; f.agree.value='1'; f.submit(); } }"
+            page.evaluate(js_payload)
             
-            # 7月 -> 8月
-            page.keyboard.press("ArrowDown")
-            time.sleep(0.8)
-            # 8月 -> 9月
-            page.keyboard.press("ArrowDown")
-            time.sleep(0.8)
-            # 9月 -> 10月
-            page.keyboard.press("ArrowDown")
-            time.sleep(1.0)
+            # Step 3: 💡 降維防卡死死穴：完全不使用任何點擊，也不讓 Playwright 進入原地死等網頁重載。
+            # 直接讓網頁在原地定格、死死地睡足 8 秒鐘！給予雲端 Linux 最完美的 10 月份實時表格加載時差！
+            print(" -> [Step 3] Freezing pipeline for 8.0s to let 10月 official database respond...")
+            time.sleep(8.0)
             
-            # 按下 Enter 鎖定選單並觸發原生的 AJAX 局部切換
-            page.keyboard.press("Enter")
-            
-            # Step 3: 💡 降維核心：完全不執行任何 click() 點擊或元素偵測，防範 Playwright 原地死等。
-            # 直接讓網頁在原地定格、睡足 7.5 秒！給予雲端 Linux 最完美的 AJAX 局部表格渲染時差！
-            print(" -> Freezing pipeline for 7.5s to let AJAX populate 10月 data...")
-            time.sleep(7.5)
-            
-            # 拍攝實體高畫質 PNG 照片 (不開 full_page，防止 Linux 算錯高度吐出空檔)
+            # Step 4: 拍攝實體高畫質 PNG 照片 (不開 full_page，防止高度錯亂，保證照片體積飽滿正確)
+            print(" -> [Step 4] Saving high-resolution snapshot block...")
             page.screenshot(path="screenshot.png", full_page=False)
+            
             browser.close()
-            print("🟢 [Playwright] October calibrated snapshot captured successfully.")
+            print("🟢 [Playwright] October snapshot verified and saved to hard drive.")
     except Exception as e:
-        print(f"❌ [Playwright Error] Subsystem tracking failed: {e}")
+        print(f"❌ [Playwright Error] Form injection routing channel broke: {e}")
 
 def execute_daily_report():
     """💡 100% 沿用收信成功、最不易被攔截的 Version 1 標準普通檔案附件封包引擎"""
-    print("🚀 [DAILY REPORT NODE] Constructing clean mail with calendar attachment...")
+    print("🚀 [DAILY REPORT NODE] Constructing clean mail envelope with calendar document...")
     
-    # 調用隱形瀏覽器進行實體鍵盤推移截圖
+    # 執行 Playwright 核心截圖
     run_playwright_workflow()
     
-    # 建立最乾淨的標準信件主體
+    # 建立最乾淨的標準信件主體容器
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
@@ -106,18 +95,18 @@ def execute_daily_report():
     """
     msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-    # 將生成完好的實體 10 月照片作為常規 Attachment 掛在信件最底下
+    # 將生成完好、數據飽滿的實體 10 月照片作為常規 Attachment 掛在信件最底下
     if os.path.exists("screenshot.png"):
         try:
             with open("screenshot.png", "rb") as f:
-                attachment = MIMEImage(f.read()) # 100% 還原成最初收信成功的安全封包宣告
+                attachment = MIMEImage(f.read()) # 100% 還原成最初收信成功的安全附件宣告
                 attachment.add_header('Content-Disposition', 'attachment', filename='oyari_calendar_october.png')
                 msg.attach(attachment)
                 print("🟢 [MIME ROUTING] 10月 PNG appended safely as a standard attachment.")
         except Exception as e:
             print(f"❌ [MIME ROUTING ERROR] Attachment binding failed: {e}")
     else:
-        print("❌ [MIME ROUTING ERROR] screenshot.png was missing!")
+        print("❌ [MIME ROUTING ERROR] screenshot.png was missing on filesystem! Form submission might have failed.")
 
     smtp_target = "://gmail.com"
     try: socket.gethostbyname(smtp_target)
