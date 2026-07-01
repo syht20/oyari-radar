@@ -63,13 +63,11 @@ def run_playwright_workflow():
                     next_month_link.hover()
                     page.wait_for_timeout(400)
                     next_month_link.click()
-                    # 穩穩等待 4 秒鐘讓網頁局部加載完畢，防範系統判定為暴衝腳本
                     page.wait_for_timeout(4000)
                 else:
                     print("⚠️ '次月' link is missing on this page view.")
                     break
             
-            # 到達 10 月後，多留 2 秒鐘讓樣式檔完全歸位，然後拍照
             page.wait_for_timeout(2000)
             page.screenshot(path="screenshot.png", full_page=True)
             print("🟢 [Playwright] Secure calibrated 10月 snapshot saved.")
@@ -173,40 +171,41 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
-    """💡 獨立函數：只負責純網頁數據解析，與 Playwright 徹底隔開"""
+    """💡 終極修正：將可能引發配對混淆的 try-except 徹底拔除，保證 100% 通過 Linux 編譯"""
     html_content_parsed = run_playwright_workflow()
     
     if not html_content_parsed:
         print("⚠️ Calibrated browser returned blank. Protection triggered.")
         return
 
-    try:
-        soup = BeautifulSoup(html_content_parsed, 'html.parser')
-        list_items = soup.find_all('li')
-        day_stripped = str(int(TARGET_DAY))
-        found_day = False
-        cell_text_clean = "Unknown"
+    soup = BeautifulSoup(html_content_parsed, 'html.parser')
+    list_items = soup.find_all('li')
+    day_stripped = str(int(TARGET_DAY))
+    found_day = False
+    cell_text_clean = "Unknown"
+    
+    for li in list_items:
+        li_html = str(li)
+        cell_text = li.get_text(" ", strip=True)
+        cell_text_clean = "".join(cell_text.split())
         
-        for li in list_items:
-            li_html = str(li)
-            cell_text = li.get_text(" ", strip=True)
-            cell_text_clean = "".join(cell_text.split())
-            
-            if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
-                if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
-                    found_day = True
-                    
-                    if mode == "daily":
-                        print(f"Executing daily summary check. Status: {cell_text_clean}")
-                        send_alert_email(cell_text_clean, is_daily_report=True)
+        if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
+            if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
+                found_day = True
+                
+                if mode == "daily":
+                    print(f"Executing daily summary check. Status: {cell_text_clean}")
+                    send_alert_email(cell_text_clean, is_daily_report=True)
+                else:
+                    if "阻" in cell_text_clean or "満" in cell_text_clean or "满足" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
+                        print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
                     else:
-                        if "阻" in cell_text_clean or "満" in cell_text_clean or "满足" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
-                            print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
-                        else:
-                            print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
-                            send_alert_email(cell_text_clean, is_daily_report=False)
-                    # 💡 終極修正：將 break 準確縮排進 if 肚子裡，徹底拔除全劇編譯地雷！
+                        print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
+                        send_alert_email(cell_text_clean, is_daily_report=False)
+                break
+                
+    if not found_day and mode == "daily":
+        send_alert_email("Checked (October 3rd text parse missing, please verify via screenshot below)", is_daily_report=True)
 
-                    
-
-                    
+if __name__ == "__main__":
+    run_mode = "check"
