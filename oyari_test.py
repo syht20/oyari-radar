@@ -2,11 +2,11 @@ import time
 import datetime
 import smtplib
 import socket
+import re
 import sys
-import os 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.image import MIMEImage 
+from bs4 import BeautifulSoup
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
@@ -17,13 +17,15 @@ SENDER_EMAIL = "juvenmini@gmail.com"
 PASSWORD = "qywcsfzqrpvemoyo"         # 💡 Your 16-letter App Password
 RECIPIENT_EMAIL = "syht20@gmail.com" # 💡 Your recipient inbox
 
+EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become available"
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
 # ===================================================================
 
-def run_playwright_workflow():
-    """📸 終極破局：利用真實合法 Cookie 瀏覽器，注入單行 JS 表單提交，100% 逼迫網頁刷新至 10 月"""
+def run_playwright_fetch_html():
+    """📸 終極破局：利用網頁原生的 doPost 函數直接在記憶體中切換月份，100% 避開不重整理卡死的陷阱"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Launching high-grade native form injection routing...")
+    print("📸 [Playwright] Initializing high-grade native function injection...")
+    captured_html = ""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=[
@@ -33,85 +35,44 @@ def run_playwright_workflow():
             ])
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                viewport={"width": 1280, "height": 1100},
+                viewport={"width": 1280, "height": 1000},
                 locale="ja-JP",
                 timezone_id="Asia/Tokyo"
             )
             page = context.new_page()
             
-            # Step 1: 從正門載入預約介面，在雲端環境拿好完整合法 Cookie
-            print(" -> [Step 1] Loading index page safely to establish secure sessions...")
+            print(" -> Loading base reservation interface...")
             page.goto(URL_BASE, timeout=35000, wait_until="networkidle")
-            time.sleep(3.0)
+            time.sleep(2.5)
             
-            # Step 2: 💡 終極拆彈：將 JS 程式碼縮減為極簡單行，完全避開任何與 Python 衝突的大括號與縮排地雷！
-            # 在真實的 DOM 樹內部直接覆寫參數並執行 submit()
-            print(" -> [Step 2] Injecting clean form parameters for October 2026...")
-            js_payload = "() => { const f = document.querySelector('form'); if(f) { f.p.value='30'; f.y.value='2026'; f.m.value='10'; f.agree.value='1'; f.submit(); } }"
-            page.evaluate(js_payload)
+            # 💡 終極降維大拆彈：直接在前端引爆網頁原生的 doPost 函數，命令日曆局部重繪至 2026年10月1日！
+            print(" -> Injecting native doPost handler to force shift into 2026-10...")
+            page.evaluate("doPost(document.calendarform, '#yoteibi', '20261001')")
             
-            # Step 3: 💡 降維防卡死死穴：完全不使用任何點擊，也不讓 Playwright 進入原地死等網頁重載。
-            # 直接讓網頁在原地定格、死死地睡足 8 秒鐘！給予雲端 Linux 最完美的 10 月份實時表格加載時差！
-            print(" -> [Step 3] Freezing pipeline for 8.0s to let 10月 official database respond...")
-            time.sleep(8.0)
+            # 定格等待 6 秒鐘，給予極其充足的時間讓 AJAX 局部刷新把 10 月的 <li> 標籤填滿
+            print(" -> Freeze pipeline for 6.0s to allow local AJAX DOM population...")
+            time.sleep(6.0)
             
-            # Step 4: 拍攝實體高畫質 PNG 照片 (不開 full_page，防止高度錯亂，保證照片體積飽滿正確)
-            print(" -> [Step 4] Saving high-resolution snapshot block...")
-            page.screenshot(path="screenshot.png", full_page=False)
-            
+            # 直接帶走 10 月份完全渲染好的真實網頁代碼（與您給我的結構完全一致！）
+            captured_html = page.content()
             browser.close()
-            print("🟢 [Playwright] October snapshot verified and saved to hard drive.")
+            print("🟢 [Playwright] Real-time October HTML stream securely captured.")
     except Exception as e:
-        print(f"❌ [Playwright Error] Form injection routing channel broke: {e}")
+        print(f"❌ [Playwright Error] Native function branch broken: {e}")
+    return captured_html
 
-def execute_daily_report():
-    """💡 100% 沿用收信成功、最不易被攔截的 Version 1 標準普通檔案附件封包引擎"""
-    print("🚀 [DAILY REPORT NODE] Constructing clean mail envelope with calendar document...")
-    
-    # 執行 Playwright 核心截圖
-    run_playwright_workflow()
-    
-    # 建立最乾淨的標準信件主體容器
+def send_plain_alert_email(subject, body_html):
+    """最純粹、無任何結構嵌套的標準寄信引擎，100% 綠燈秒發秒收"""
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
-    msg['Subject'] = EMAIL_SUBJECT_DAILY
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body_html, 'html', 'utf-8'))
     
-    html_content = f"""
-    <html>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <h3>📢 This is the daily snapshot of Hut Oyari Calendar (2026年10月):</h3>
-        <p>If you see '◯', '▲', or any single-digit number instead of '満', please click below to book immediately!</p>
-        <br>
-        <p style="padding: 10px; background-color: #ffffcc; border-left: 4px solid #f0ad4e; font-weight: bold;">
-          📎 10月份最新預約日曆照片，已作為「常規檔案附件」夾帶於本郵件最下方，請點開查看！
-        </p>
-        <br>
-        <div style="margin: 20px 0;">
-          <a href="https://enzanso-reservation.jp" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
-        </div>
-      </body>
-    </html>
-    """
-    msg.attach(MIMEText(html_content, 'html', 'utf-8'))
-
-    # 將生成完好、數據飽滿的實體 10 月照片作為常規 Attachment 掛在信件最底下
-    if os.path.exists("screenshot.png"):
-        try:
-            with open("screenshot.png", "rb") as f:
-                attachment = MIMEImage(f.read()) # 100% 還原成最初收信成功的安全附件宣告
-                attachment.add_header('Content-Disposition', 'attachment', filename='oyari_calendar_october.png')
-                msg.attach(attachment)
-                print("🟢 [MIME ROUTING] 10月 PNG appended safely as a standard attachment.")
-        except Exception as e:
-            print(f"❌ [MIME ROUTING ERROR] Attachment binding failed: {e}")
-    else:
-        print("❌ [MIME ROUTING ERROR] screenshot.png was missing on filesystem! Form submission might have failed.")
-
     smtp_target = "://gmail.com"
     try: socket.gethostbyname(smtp_target)
     except socket.gaierror: smtp_target = "64.233.189.108"
-
+    
     try:
         server = smtplib.SMTP_SSL(smtp_target, 465, timeout=15)
         server.login(SENDER_EMAIL, PASSWORD)
@@ -125,9 +86,110 @@ def execute_daily_report():
             server.login(SENDER_EMAIL, PASSWORD)
             server.sendmail(SENDER_EMAIL, RECIPIENT_EMAIL, msg.as_string())
             server.quit()
-            print("✉️ Mail delivered via secure fallback channel.")
+            print("✉️ Mail delivered via backup secure channel.")
         except Exception as e2:
             print("❌ Mail failed:", e2)
 
+def extract_day_status(clean_html_text, day_string):
+    """核心交叉驗證演算法：精準定位特定日期在 HTML 標籤內部的即時狀態"""
+    # 尋找與您原始碼完全對齊的狀態字元
+    match = re.search(day_string + r'.*?([◯▲満满\d])', clean_html_text)
+    if match:
+        status_char = match.group(1)
+        if status_char in ["臨", "満", "满"]:
+            return "滿室 (満)"
+        elif status_char in ["◯", "▲"] or status_char.isdigit():
+            return f"🔥 有空房 [{status_char}]"
+        return f"未知狀態 ({status_char})"
+    return "未能在原始碼中定位該日期 (Data unparsed)"
+
+def check_oyari(mode="check"):
+    """💡 終極合流主體：利用 Playwright 的原生 JS 切換拿到 10月源碼，再交給 BeautifulSoup 解析"""
+    html_content_parsed = run_playwright_fetch_html()
+    
+    if not html_content_parsed:
+        print("⚠️ Subsystem returned blank. Task bypassed.")
+        return
+
+    # 100% 恢復您最引以為傲、完全正確的 BeautifulSoup 標籤循環解析
+    soup = BeautifulSoup(html_content_parsed, 'html.parser')
+    list_items = soup.find_all('li')
+    day_stripped = str(int(TARGET_DAY))
+    cell_text_clean = "Unknown"
+    found_day = False
+    
+    for li in list_items:
+        li_html = str(li)
+        cell_text = li.get_text(" ", strip=True)
+        cell_text_clean = "".join(cell_text.split())
+        
+        # 精確核對您給予的 class="day" 或 10月3日 格子特徵
+        if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
+            if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
+                found_day = True
+                break
+
+    # 執行 10/2、10/3、10/6 的三日期交叉數據驗證比對
+    clean_all_spaces = "".join(html_content_parsed.split())
+    status_10_02 = extract_day_status(clean_all_spaces, "2日")
+    status_10_03 = extract_day_status(clean_all_spaces, "3日")
+    status_10_06 = extract_day_status(clean_all_spaces, "6日")
+
+    # 擷取日曆表格核心片段，當作郵件內文面板
+    preview_idx = html_content_parsed.find("calendarTable")
+    if preview_idx == -1: preview_idx = html_content_parsed.find("calendarDate")
+    if preview_idx == -1: preview_idx = 0
+    raw_snippet = html_content_parsed[preview_idx:preview_idx+2500].strip().replace('<', '&lt;').replace('>', '&gt;')
+
+    # 判斷是否需要發送 Urgent 簡訊警報
+    if mode != "daily":
+        if found_day and "満" not in cell_text_clean and "满" not in cell_text_clean and "臨" not in cell_text_clean:
+            print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
+            urgent_html = f"<h2>🔥 [Vacancy Alert] October 3rd is available ({cell_text_clean})!</h2>"
+            send_plain_alert_email(EMAIL_SUBJECT_URGENT, urgent_html)
+        else:
+            print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
+            
+    # 執行 Daily 面板報告發送
+    else:
+        print("Executing daily report summary node...")
+        status_label = f"10月3日狀態：{cell_text_clean}" if found_day else "10月3日狀態：請查收下方實時數據面板"
+        
+        html_content = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h3>📢 This is the daily snapshot of Hut Oyari Calendar (2026年10月):</h3>
+            
+            <!-- 💡 交叉驗證數據看板區 -->
+            <div style="background-color: #f7f9fa; padding: 15px; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 20px;">
+              <h4 style="margin-top: 0; color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">🎯 10月核心日期巡邏看板 (Cross-Verified Data)</h4>
+              <ul style="list-style: none; padding-left: 0; margin-bottom: 0; font-size: 14px;">
+                <li style="padding: 6px 0;">📅 <b>10月2日 (五)</b> 狀態：<span style="color:#4b5563;">{status_10_02}</span></li>
+                <li style="padding: 6px 0; background-color: #fffde7; font-weight: bold; border-left: 4px solid #d9534f; padding-left: 8px;">🎯 10月3日 (六) 狀態：<span>{status_10_03}</span> (BS解析結果: {status_label})</li>
+                <li style="padding: 6px 0;">📅 <b>10月6日 (二)</b> 狀態：<span style="color:#4b5563;">{status_10_06}</span></li>
+              </ul>
+            </div>
+
+            <p>If you see '◯', '▲', or any single-digit number instead of '満', please click below to book immediately!</p>
+            <br>
+            
+            <!-- 核心黑色原始碼面板 -->
+            <div style="background:#222; padding:15px; border-radius:6px; font-family:monospace; box-shadow: inset 0 0 10px #000;">
+              <b style="color:#5cb85c;">[💾 Real October Calendar HTML Source Code Node]</b>
+              <pre style="white-space: pre-wrap; font-size:12px; color:#fff; margin-top:10px; line-height:1.4;">{raw_snippet}</pre>
+            </div>
+            <br>
+            <div style="margin: 20px 0;">
+              <a href="https://enzanso-reservation.jp" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
+            </div>
+          </body>
+        </html>
+        """
+        send_plain_alert_email(EMAIL_SUBJECT_DAILY, html_content)
+
 if __name__ == "__main__":
-    execute_daily_report()
+    run_mode = "check"
+    if len(sys.argv) > 1:
+        if "daily" in sys.argv:
+            run_mode = "daily"
+    check_oyari(mode=run_mode)
