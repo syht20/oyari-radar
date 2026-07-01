@@ -31,7 +31,7 @@ def verify_html(html_text, method_name):
         return False
 
 # ===================================================================
-# 🧪 矩陣 1：Playwright 從首頁正門進 + 物理點擊次月 3 次 (最原始成功的環境)
+# 🧪 矩陣 1：Playwright 從首頁正門進 + 物理點擊次月 3 次
 # ===================================================================
 def test_matrix_1():
     from playwright.sync_api import sync_playwright
@@ -42,13 +42,13 @@ def test_matrix_1():
             page.goto(URL_BASE, wait_until="networkidle")
             time.sleep(2)
             
-            # 使用 no_wait_after=True 阻止它死等整頁重新整理，每按一次都睡一會兒
+            # 使用 no_wait_after=True 阻止它死等整頁重新整理
             page.get_by_role("link", name="次月").click(no_wait_after=True)
-            time.sleep(3)
+            time.sleep(3.5)
             page.get_by_role("link", name="次月").click(no_wait_after=True)
-            time.sleep(3)
+            time.sleep(3.5)
             page.get_by_role("link", name="次月").click(no_wait_after=True)
-            time.sleep(5)
+            time.sleep(6)
             
             html = page.content()
             browser.close()
@@ -71,7 +71,7 @@ def test_matrix_2():
             page.select_option("select[name='y']", value="2026")
             page.select_option("select[name='m']", value="10")
             page.locator("input[type='submit'][value='表示']").click(no_wait_after=True)
-            time.sleep(6)
+            time.sleep(6.5)
             
             html = page.content()
             browser.close()
@@ -87,7 +87,7 @@ def test_matrix_3():
     try:
         from playwright_stealth import stealth_sync
     except ImportError:
-        print("❌ [矩陣 3] 失敗：請在 YAML 中安裝 pip install playwright-stealth")
+        print("❌ [矩陣 3] 失敗：環境缺乏 playwright-stealth")
         return
         
     try:
@@ -100,11 +100,11 @@ def test_matrix_3():
             time.sleep(2)
             
             page.get_by_role("link", name="次月").click(no_wait_after=True)
-            time.sleep(3)
+            time.sleep(3.5)
             page.get_by_role("link", name="次月").click(no_wait_after=True)
-            time.sleep(3)
+            time.sleep(3.5)
             page.get_by_role("link", name="次月").click(no_wait_after=True)
-            time.sleep(5)
+            time.sleep(6)
             
             html = page.content()
             browser.close()
@@ -126,7 +126,7 @@ def test_matrix_4():
             
             js_code = "() => { const f = document.querySelector('form'); if(f) { f.p.value='30'; f.y.value='2026'; f.m.value='10'; f.agree.value='1'; f.submit(); } }"
             page.evaluate(js_code)
-            time.sleep(7)
+            time.sleep(8)
             
             html = page.content()
             browser.close()
@@ -150,9 +150,8 @@ def test_matrix_5():
             page.locator("input[type='submit'][value='表示']").click(no_wait_after=True)
             
             print(" -> [矩陣 5 監視器啟動] 正在盯梢網頁 DOM 樹變更...")
-            # 只要異步加載一好，這五個字一出現在畫面上，立刻綠燈放行
             page.wait_for_selector("text=2026年10月", timeout=12000)
-            time.sleep(1)
+            time.sleep(2)
             
             html = page.content()
             browser.close()
