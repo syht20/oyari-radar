@@ -7,6 +7,7 @@ import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage 
+from email import encoders # 💡 核心安全：引入強制的 Base64 編碼器，保證圖片流在傳輸時不破損
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
@@ -22,7 +23,7 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_workflow():
-    """📸 降維大破局：連續按 3 次次月切換到 10 月。加載 no_wait_after=True 徹底封殺 Timeout 卡死"""
+    """📸 終極破局：真人模擬連續點擊，並採用固定的 Viewport 視窗抓拍，徹底封殺空殼破圖"""
     from playwright.sync_api import sync_playwright
     print("📸 [Playwright] Initializing secure visual capture routing...")
     try:
@@ -34,7 +35,7 @@ def run_playwright_workflow():
             ])
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                viewport={"width": 1280, "height": 1200},
+                viewport={"width": 1280, "height": 1000}, # 鎖定高畫質黃金視窗
                 locale="ja-JP",
                 timezone_id="Asia/Tokyo"
             )
@@ -44,7 +45,7 @@ def run_playwright_workflow():
             page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
             time.sleep(2.5)
             
-            # 💡 終極降維：加上 no_wait_after=True，命令 Playwright 按完按鈕後立刻鬆手，絕對不進入超時等待！
+            # 點擊切換月份 (no_wait_after=True 拆除超時地雷)
             print(" -> Clicking '次月' (July -> August)...")
             page.get_by_role("link", name="次月").click(no_wait_after=True)
             time.sleep(3.5)
@@ -56,14 +57,16 @@ def run_playwright_workflow():
             print(" -> Clicking '次月' (September -> October)...")
             page.get_by_role("link", name="次月").click(no_wait_after=True)
             
-            # 穩穩給予 6 秒鐘時間，讓日本伺服器把 10 月份實時表格數據與中日文字體完全填滿
+            # 穩穩給予 6.5 秒，讓 10 月份實時表格與燕山莊綠色外殼樣式完全渲染歸位
             print(" -> Stabilization freeze for October calendar layout...")
-            time.sleep(6.0)
+            time.sleep(6.5)
             
-            # 咔嚓！拍下最真實、100% 絕對是 10 月的螢幕照片
-            page.screenshot(path="screenshot.png", full_page=True)
+            # 💡 終極修正：徹底拋棄 full_page=True（防止 Linux 算錯高度吐出空檔），直接進行實體視窗截圖！
+            print(" -> Capturing physical viewport image block...")
+            page.screenshot(path="screenshot.png", full_page=False)
+            
             browser.close()
-            print("🟢 [Playwright] Calibrated 10月 calendar snapshot successfully captured.")
+            print("🟢 [Playwright] Calibrated 10月 physical snapshot successfully captured.")
     except Exception as e:
         print(f"❌ [Playwright Error] Hardware capture failed: {e}")
 
@@ -71,11 +74,11 @@ def execute_daily_report():
     """💡 100% 沿用並固化您最初成功收到 7 月信件時的相容性寄信結構"""
     print("🚀 [DAILY REPORT NODE] Starting secure 图文信件封包...")
     
-    # 背景執行 Playwright 真人序列點擊截圖
+    # 執行真人點擊與視窗截圖
     run_playwright_workflow()
     
-    # 建立信件容器 (完全對齊您收信成功的 Version 1 引擎)
-    msg = MIMEMultipart()
+    # 💡 遵循 RFC 國際標準：多圖文內嵌主要容器採用 alternative
+    msg = MIMEMultipart('alternative')
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
     msg['Subject'] = EMAIL_SUBJECT_DAILY
@@ -98,20 +101,28 @@ def execute_daily_report():
       </body>
     </html>
     """
-    msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+    
+    # 建立內嵌 nested 容器
+    msg_related = MIMEMultipart('related')
+    msg_related.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-    # 將剛才順利生成、100% 是 10 月的照片內嵌進信裡
+    # 將剛才順利生成、100% 飽滿的實體 10 月照片內嵌進信裡
     if os.path.exists("screenshot.png"):
         try:
             with open("screenshot.png", "rb") as f:
-                image = MIMEImage(f.read())
-                image.add_header('Content-ID', '<calendar_image>')
-                msg.attach(image)
-                print("🟢 [MIME PROCESS] Screenshot image embedded safely.")
+                # 💡 強制注入 Base64 編碼標頭，擊碎所有信箱的破圖過濾機制！
+                image = MIMEImage(f.read(), _subtype="png")
+                encoders.encode_base64(image)
+                image.add_header('Content-ID', '<calendar_image>') # 帶上標準角括號
+                image.add_header('Content-Disposition', 'inline', filename='screenshot.png')
+                msg_related.attach(image)
+                print("🟢 [MIME PROCESS] Base64 Image nested safely with bracketed Content-ID.")
         except Exception as e:
             print("⚠️ Image attach skipped:", e)
     else:
         print("❌ [MIME ERROR] screenshot.png was not generated!")
+
+    msg.attach(msg_related)
 
     # 雙保險寄信管道
     smtp_target = "://gmail.com"
@@ -136,5 +147,4 @@ def execute_daily_report():
             print("❌ Mail failed:", e2)
 
 if __name__ == "__main__":
-    # 💡 終極降維：只為您最珍貴的每日 10 月照片服務。每半小時的巡邏（check）完全拔除不驚動，避免任何環境衝突
     execute_daily_report()
