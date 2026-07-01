@@ -8,8 +8,8 @@ import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage 
-from email import encoders 
 from bs4 import BeautifulSoup
+import requests
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
@@ -25,10 +25,9 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_workflow():
-    """📸 智慧動態校正：不論當前是幾月，只要畫面還沒到10月，就動態點擊『次月』直到抵達為止"""
+    """📸 智慧動態校正截圖：只要畫面還沒到10月，就動態點擊『次月』直到抵達為止"""
     from playwright.sync_api import sync_playwright
     print("📸 [Playwright] Launching dynamic intelligent human simulation...")
-    captured_html = ""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=[
@@ -44,50 +43,41 @@ def run_playwright_workflow():
             )
             page = context.new_page()
             
-            print(" -> Loading reservation interface...")
-            page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
+            # 從帶有 p=30 參數的頁面安全進入
+            page.goto("https://enzanso-reservation.jp", timeout=30000, wait_until="networkidle")
             page.wait_for_timeout(2000)
             
-            # 動態智慧導航：最大嘗試點擊 6 次，徹底封殺跨月移位地雷
+            # 💡 智慧動態校正：最多嘗試點擊 6 次，直到畫面上出現 2026年10月 為止！
             for attempt in range(1, 7):
-                current_page_text = page.content()
-                
-                # 檢查網頁當前是否已經顯示了目標的 "2026年10月"
-                if TARGET_YEAR_MONTH in current_page_text:
-                    print(f"🟢 [SUCCESS] Targeted month reached at step {attempt}!")
+                if TARGET_YEAR_MONTH in page.content():
+                    print(f"🟢 [SUCCESS] Targeted month '{TARGET_YEAR_MONTH}' reached!")
                     break
-                    
-                print(" -> Current month is not target. Simulating human mouse click on '次月'...")
+                
                 next_month_link = page.get_by_role("link", name="次月")
                 if next_month_link.is_visible():
                     next_month_link.hover()
-                    page.wait_for_timeout(400)
+                    page.wait_for_timeout(300)
                     next_month_link.click()
-                    page.wait_for_timeout(4000)
+                    page.wait_for_timeout(4000) # 穩穩等待 4 秒局部刷新
                 else:
-                    print("⚠️ '次月' link is missing on this page view.")
                     break
             
             page.wait_for_timeout(2000)
+            # 儲存照片
             page.screenshot(path="screenshot.png", full_page=True)
-            print("🟢 [Playwright] Secure calibrated 10月 snapshot saved.")
-            
-            captured_html = page.content()
             browser.close()
+            print("🟢 [Playwright] October snapshot successfully saved.")
     except Exception as e:
-        print(f"❌ [Playwright Error] Intelligent trajectory broken: {e}")
-    return captured_html
+        print(f"❌ [Playwright Error] Failed to capture screenshot: {e}")
 
 def send_alert_email(current_status_text, is_daily_report=False):
-    """Sends custom notification layout strictly compliant with RFC 2387 Email Protocols"""
-    msg = MIMEMultipart('alternative')
+    """Sends custom notification layout based on mode (100% Version 1 original mail engine)"""
+    msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
     
     if is_daily_report:
         msg['Subject'] = EMAIL_SUBJECT_DAILY
-        text_content = f"Hut Oyari Daily Snapshot. Current Status of Oct {TARGET_DAY}rd is: {current_status_text}."
-        
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -99,7 +89,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
             <img src="cid:calendar_image" alt="[Calendar Image]" style="max-width: 100%; border: 1px solid #ccc; border-radius: 5px;">
             <br><br>
             <div style="margin: 20px 0;">
-              <a href="https://enzanso-reservation.jp" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
+              <a href="{URL_BASE}" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
             </div>
             <br>
             <hr style="border: 0; border-top: 1px solid #eee;">
@@ -107,27 +97,6 @@ def send_alert_email(current_status_text, is_daily_report=False):
           </body>
         </html>
         """
-        
-        msg_related = MIMEMultipart('related')
-        msg_related.attach(MIMEText(html_content, 'html', 'utf-8'))
-        
-        if os.path.exists("screenshot.png"):
-            try:
-                with open("screenshot.png", "rb") as f:
-                    image = MIMEImage(f.read(), _subtype="png")
-                    encoders.encode_base64(image)
-                    image.add_header('Content-ID', '<calendar_image>') 
-                    image.add_header('Content-Disposition', 'inline', filename='screenshot.png')
-                    msg_related.attach(image)
-                    print("🟢 [MIME PROCESS] Base64 Image nested safely.")
-            except Exception as e:
-                print(f"❌ [MIME ERROR] Image attachment encoding failed: {e}")
-        else:
-            print("❌ [MIME ERROR] screenshot.png was missing during envelope assembly!")
-            
-        msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
-        msg.attach(msg_related)
-        
     else:
         msg['Subject'] = EMAIL_SUBJECT_URGENT
         html_content = f"""
@@ -140,18 +109,28 @@ def send_alert_email(current_status_text, is_daily_report=False):
             <p>A cancellation has just been released. Please act immediately!</p>
             <br>
             <div style="margin: 20px 0;">
-              <a href="https://enzanso-reservation.jp" style="background-color: #5cb85c; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Book Now</a>
+              <a href="{URL_BASE}" style="background-color: #5cb85c; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Book Now</a>
             </div>
           </body>
         </html>
         """
-        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+        
+    msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+    # 💡 100% 回歸當初成功收到 7 月信件時的內嵌圖片寫法，完全不改動
+    if is_daily_report and os.path.exists("screenshot.png"):
+        try:
+            with open("screenshot.png", "rb") as f:
+                image = MIMEImage(f.read())
+                image.add_header('Content-ID', '<calendar_image>')
+                msg.attach(image)
+                print("📎 Screenshot attached safely using original stable engine.")
+        except Exception as e:
+            print("⚠️ Image attach skipped:", e)
 
     smtp_target = "://gmail.com"
-    try:
-        socket.gethostbyname(smtp_target)
-    except socket.gaierror:
-        smtp_target = "64.233.189.108"
+    try: socket.gethostbyname(smtp_target)
+    except socket.gaierror: smtp_target = "64.233.189.108"
 
     try:
         server = smtplib.SMTP_SSL(smtp_target, 465, timeout=15)
@@ -171,41 +150,57 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
-    """💡 終極修正：將可能引發配對混淆的 try-except 徹底拔除，保證 100% 通過 Linux 編譯"""
-    html_content_parsed = run_playwright_workflow()
-    
-    if not html_content_parsed:
-        print("⚠️ Calibrated browser returned blank. Protection triggered.")
-        return
-
-    soup = BeautifulSoup(html_content_parsed, 'html.parser')
-    list_items = soup.find_all('li')
-    day_stripped = str(int(TARGET_DAY))
-    found_day = False
-    cell_text_clean = "Unknown"
-    
-    for li in list_items:
-        li_html = str(li)
-        cell_text = li.get_text(" ", strip=True)
-        cell_text_clean = "".join(cell_text.split())
+    # 🔴 100% 您最初在 Jupyter 測試成功、最引以為傲的 requests Session 爬蟲文字解析
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": URL_BASE,
+        "Origin": "https://enzanso-reservation.jp"
+    })
+    try:
+        session.get(URL_BASE, timeout=15)
+        payload = {"p": "30", "y": "2026", "m": "10", "agree": "1"}
+        res = session.post("https://enzanso-reservation.jp", data=payload, timeout=15)
+        soup = BeautifulSoup(res.text, 'html.parser')
         
-        if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
-            if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
-                found_day = True
-                
-                if mode == "daily":
-                    print(f"Executing daily summary check. Status: {cell_text_clean}")
-                    send_alert_email(cell_text_clean, is_daily_report=True)
-                else:
-                    if "阻" in cell_text_clean or "満" in cell_text_clean or "满足" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
-                        print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
+        list_items = soup.find_all('li')
+        day_stripped = str(int(TARGET_DAY))
+        found_day = False
+        cell_text_clean = "Unknown"
+        
+        for li in list_items:
+            li_html = str(li)
+            cell_text = li.get_text(" ", strip=True)
+            cell_text_clean = "".join(cell_text.split())
+            
+            if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
+                if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
+                    found_day = True
+                    
+                    if mode == "daily":
+                        print(f"Executing daily summary check. Status: {cell_text_clean}")
+                        # 💡 核心收網：只有在 daily 模式、且 requests 順利跑完後，才去背景執行 Playwright 智慧點擊截圖！
+                        run_playwright_workflow()
+                        send_alert_email(cell_text_clean, is_daily_report=True)
                     else:
-                        print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
-                        send_alert_email(cell_text_clean, is_daily_report=False)
-                break
-                
-    if not found_day and mode == "daily":
-        send_alert_email("Checked (October 3rd text parse missing, please verify via screenshot below)", is_daily_report=True)
+                        if "阻" in cell_text_clean or "満" in cell_text_clean or "满" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
+                            print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
+                        else:
+                            print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
+                            send_alert_email(cell_text_clean, is_daily_report=False)
+                    break
+                    
+        if not found_day and mode == "daily":
+            # 備援截圖
+            run_playwright_workflow()
+            send_alert_email("Checked (Data unparsed, please verify link manually)", is_daily_report=True)
+            
+    except Exception as e:
+        print("Cloud inspection node error:", e)
 
 if __name__ == "__main__":
     run_mode = "check"
+    if len(sys.argv) > 1:
+        if "daily" in sys.argv:
+            run_mode = "daily"
+    check_oyari(mode=run_mode)
