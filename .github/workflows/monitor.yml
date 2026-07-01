@@ -57,4 +57,9 @@ jobs:
         playwright install chromium
 
     - name: Execute Daily Report with Screenshot
-      run: python oyari_test.py daily
+      run: python test_all.py daily
+
+
+
+
+
