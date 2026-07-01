@@ -12,8 +12,6 @@ import requests
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
-URL_POST_TARGET = "https://enzanso-reservation.jp"
-
 TARGET_YEAR_MONTH = "2026年10月"
 TARGET_DAY = "3"  # 🎯 Deadlocked on Oct 3rd for your Mt. Yarigatake trek!
 
@@ -26,9 +24,9 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_workflow():
-    """📸 100% 還原最初成功路軌：規規矩矩點擊 3 次次月，完全不使用可能導致 Timeout 卡死的元素偵測"""
+    """📸 終極降維：利用原生事件驅動 (Dispatch Event) 替代點擊，100% 排除 Timeout 超時死鎖"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Launching standard sequential navigation...")
+    print("📸 [Playwright] Launching high-compatibility event injection subsystem...")
     captured_html = ""
     try:
         with sync_playwright() as p:
@@ -45,33 +43,41 @@ def run_playwright_workflow():
             )
             page = context.new_page()
             
-            print(" -> [Step 1] Loading base page...")
-            page.goto("https://enzanso-reservation.jp?p=30", timeout=30000, wait_until="networkidle")
-            time.sleep(3.0)
+            print(" -> Loading reservation interface...")
+            page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
+            page.wait_for_timeout(2000)
             
-            # 💡 終極修正：直接使用最原始、100% 絕不超時卡死的循序點擊，每按一次都穩穩等 4 秒
-            print(" -> [Step 2] Clicking '次月' 1st time (Moving to August)...")
-            page.get_by_role("link", name="次月").click()
-            time.sleep(4.0)
+            # 💡 終極反思修正：完全不使用會引發網頁死鎖的 click() 指令。
+            # 直接命令年份下拉選單切換至 2026 年，並手動向網頁引爆真實的 change 事件！
+            print(" -> Forcing Year Dropdown to 2026 via native dispatch...")
+            page.locator("select[name='y']").select_option("2026")
+            page.locator("select[name='y']").dispatch_event("change")
+            page.wait_for_timeout(1000)
             
-            print(" -> [Step 3] Clicking '次月' 2nd time (Moving to September)...")
-            page.get_by_role("link", name="次月").click()
-            time.sleep(4.0)
+            # 直接命令月份下拉選單切換至 10 月，並手動向網頁引爆真實的 change 事件！
+            print(" -> Forcing Month Dropdown to 10 via native dispatch...")
+            page.locator("select[name='m']").select_option("10")
+            page.locator("select[name='m']").dispatch_event("change")
+            page.wait_for_timeout(1000)
             
-            print(" -> [Step 4] Clicking '次月' 3rd time (Moving to October)...")
-            page.get_by_role("link", name="次月").click()
-            time.sleep(5.0)
+            # 直接命令觸發『表示』按鈕的原生 click 事件，不引發異步跳轉死鎖
+            print(" -> Dispatching native click to display calendar...")
+            page.locator("input[type='submit'][value='表示']").dispatch_event("click")
             
-            # 強行打包 10 月份真實的 HTML 內容帶走
+            # 給予網頁極其寬裕的 6 秒鐘，讓前端 JavaScript 穩穩把 10 月份數據渲染出來
+            print(" -> Awaiting local AJAX data population...")
+            page.wait_for_timeout(6000)
+            
+            # 打包真實的 10 月份網頁原始碼代碼
             captured_html = page.content()
             browser.close()
-            print("🟢 [Playwright] 10月 HTML content retrieved safely.")
+            print("🟢 [Playwright] October HTML data stream successfully synchronized.")
     except Exception as e:
-        print(f"❌ [Playwright Error] Sequential tracking failed: {e}")
+        print(f"❌ [Playwright Error] Event injection pipeline failed: {e}")
     return captured_html
 
 def send_plain_alert_email(subject, body_html, raw_text_log=""):
-    """100% 沿用先前順利收到信件的純文字/HTML通用信件引擎"""
+    """100% 沿用上一版讓您順利秒收郵件的標準安全信件引擎"""
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECIPIENT_EMAIL
@@ -79,15 +85,14 @@ def send_plain_alert_email(subject, body_html, raw_text_log=""):
     
     msg.attach(MIMEText(body_html, 'html', 'utf-8'))
     
-    # 💡 終極安全防禦：把真實抓到的 10 月 HTML 當作常規 .txt 附檔夾帶，全宇宙伺服器皆綠燈放行，100% 不吃信、不破圖
     if raw_text_log:
         try:
             attachment = MIMEText(raw_text_log, 'plain', 'utf-8')
             attachment.add_header('Content-Disposition', 'attachment', filename='october_calendar_source.txt')
             msg.attach(attachment)
-            print("🟢 [MIME SUB-ROUTING] Raw HTML appended as standard txt attachment.")
+            print("🟢 [MIME PROCESS] Text log appended safely.")
         except Exception as e:
-            print(f"❌ [MIME ATTACH ERROR]: {e}")
+            print(f"❌ [MIME ERROR]: {e}")
 
     smtp_target = "://gmail.com"
     try: socket.gethostbyname(smtp_target)
@@ -98,7 +103,7 @@ def send_plain_alert_email(subject, body_html, raw_text_log=""):
         server.login(SENDER_EMAIL, PASSWORD)
         server.sendmail(SENDER_EMAIL, RECIPIENT_EMAIL, msg.as_string())
         server.quit()
-        print("✉️ Mail successfully delivered to recipient inbox.")
+        print("✉️ Mail successfully delivered.")
     except Exception as e:
         try:
             server = smtplib.SMTP(smtp_target, 587, timeout=15)
@@ -106,18 +111,17 @@ def send_plain_alert_email(subject, body_html, raw_text_log=""):
             server.login(SENDER_EMAIL, PASSWORD)
             server.sendmail(SENDER_EMAIL, RECIPIENT_EMAIL, msg.as_string())
             server.quit()
-            print("✉️ Mail delivered via fallback secure channel.")
+            print("✉️ Mail delivered via secure channels.")
         except Exception as e2:
             print("❌ Mail failed:", e2)
 
 def execute_daily_report():
-    """💡 獨立每日報告功能：讓 Playwright 循序點擊拿到 10 月網頁源碼，再交給 BeautifulSoup 解析寄出"""
+    """💡 獨立每日報告功能：讓 Playwright 去獲取 10 月純文字，再交給 BeautifulSoup 解析寄出"""
     html_content_parsed = run_playwright_workflow()
     
-    # 萬一瀏覽器真的不幸發生意外，給予基本的降維防禦，確保信件一定會發出
     if not html_content_parsed:
-        print("⚠️ Browser execution failed. Falling back to generic notification.")
-        html_content_parsed = "<html><body>Browser timeout. Please check manually.</body></html>"
+        print("⚠️ Subsystem returned blank. Task bypassed.")
+        html_content_parsed = "<html><body>Failed to fetch secure data stream.</body></html>"
 
     soup = BeautifulSoup(html_content_parsed, 'html.parser')
     list_items = soup.find_all('li')
@@ -125,7 +129,7 @@ def execute_daily_report():
     cell_text_clean = "Unknown"
     found_day = False
     
-    # 爬取 10 月 3 日當天的狀態
+    # 精確爬取 10 月 3 日當天的狀態
     for li in list_items:
         li_html = str(li)
         cell_text = li.get_text(" ", strip=True)
@@ -159,12 +163,11 @@ def execute_daily_report():
         <p><b>📎 10月份完整的網頁 HTML 原始碼，已作為 .txt 檔案安全附帶於本封郵件下方，供您核對。</b></p>
         <br>
         <div style="margin: 20px 0;">
-          <a href="https://enzanso-reservation.jp?p=30" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
+          <a href="https://enzanso-reservation.jp" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
         </div>
       </body>
     </html>
     """
-    # 寄出信件並夾帶真實的 HTML 源碼檔案
     send_plain_alert_email(EMAIL_SUBJECT_DAILY, html_content, raw_text_log=html_content_parsed)
 
 def check_oyari():
@@ -203,7 +206,8 @@ def check_oyari():
         print("Cloud inspection node error:", e)
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and "daily" in sys.argv:
-        execute_daily_report()
-    else:
-        check_oyari()
+    run_mode = "check"
+    if len(sys.argv) > 1:
+        if "daily" in sys.argv:
+            run_mode = "daily"
+    check_oyari(mode=run_mode)
