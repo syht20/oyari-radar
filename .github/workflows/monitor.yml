@@ -57,4 +57,4 @@ jobs:
         playwright install chromium
 
     - name: Execute Daily Report with Screenshot
-      run: python python diagnose.py daily
+      run: python diagnose.py daily
