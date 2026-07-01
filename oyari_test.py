@@ -25,7 +25,7 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_workflow():
-    """📸 終極動態校正：只要畫面還沒到10月，就自動動態點擊『次月』，徹底封殺任何月份移位錯誤"""
+    """📸 智慧動態校正：不論當前是幾月，只要畫面還沒到10月，就動態點擊『次月』直到抵達為止"""
     from playwright.sync_api import sync_playwright
     print("📸 [Playwright] Launching dynamic intelligent human simulation...")
     captured_html = ""
@@ -48,7 +48,7 @@ def run_playwright_workflow():
             page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
             page.wait_for_timeout(2000)
             
-            # 💡 終極反思修正：動態智慧導航。最大嘗試 6 次點擊防止死循環
+            # 動態智慧導航：最大嘗試點擊 6 次，徹底封殺跨月移位地雷
             for attempt in range(1, 7):
                 current_page_text = page.content()
                 
@@ -58,14 +58,12 @@ def run_playwright_workflow():
                     break
                     
                 print(f" -> Current month is not {TARGET_YEAR_MONTH}. Simulating human mouse click on '次月'...")
-                
-                # 用真實人類行為模擬點擊網頁上的 "次月" 連結
                 next_month_link = page.get_by_role("link", name="次月")
                 if next_month_link.is_visible():
                     next_month_link.hover()
                     page.wait_for_timeout(400)
                     next_month_link.click()
-                    # 穩穩等待 4 秒鐘讓網頁局部加載完畢，防止暴衝觸發 WAF 攔截
+                    # 穩穩等待 4 秒鐘讓網頁局部加載完畢，防範系統判定為暴衝腳本
                     page.wait_for_timeout(4000)
                 else:
                     print("⚠️ '次月' link is missing on this page view.")
@@ -206,5 +204,5 @@ def check_oyari(mode="check"):
                         else:
                             print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
                             send_alert_email(cell_text_clean, is_daily_report=False)
-                    break
-
+                    break # 💡 縮排精準修正，退出 li 迴圈
+                    
