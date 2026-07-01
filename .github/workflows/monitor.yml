@@ -30,7 +30,7 @@ jobs:
 
 
   # ==========================================
-  # 任務二：每天晚上 22:00（日本時間）的截圖報告信（只有這步需要裝 Playwright）
+  # 任務二：五大矩陣技術交叉診斷大會師 (100% 獨立排查專用)
   # ==========================================
   daily-visual-report:
     runs-on: ubuntu-latest
@@ -50,16 +50,12 @@ jobs:
       with:
         python-version: '3.12'
 
-    # 只在這個任務中安裝 playwright，不影響半小時巡邏的效率
-    - name: Install Browser and Dependencies
+    # 🔥 核心更新：補齊五大矩陣相依的全部防偵測與瀏覽器套件
+    - name: Install Browser and All Matrix Plugins
       run: |
-        pip install requests beautifulsoup4 playwright
+        pip install requests beautifulsoup4 playwright playwright-stealth
         playwright install chromium
 
-    - name: Execute Daily Report with Screenshot
-      run: python oyari_test.py daily
-
-
-
-
-
+    # 精準導向大範圍診斷矩陣檔案
+    - name: Execute Full Matrix Experiment Subsystem
+      run: python test_all.py daily
