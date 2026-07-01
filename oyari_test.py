@@ -10,7 +10,6 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage 
 from email import encoders 
 from bs4 import BeautifulSoup
-import requests
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
@@ -25,10 +24,11 @@ EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become avail
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
 # ===================================================================
 
-def run_playwright_screenshot():
-    """📸 核心回歸：直連 10月 參數網址，完全移除任何 JavaScript 避免語法衝突"""
+def run_playwright_workflow():
+    """📸 終極動態校正：只要畫面還沒到10月，就自動動態點擊『次月』，徹底封殺任何月份移位錯誤"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Starting browser navigation via explicit URL params...")
+    print("📸 [Playwright] Launching dynamic intelligent human simulation...")
+    captured_html = ""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=[
@@ -44,20 +44,43 @@ def run_playwright_screenshot():
             )
             page = context.new_page()
             
-            # 💡 終極拆彈修正：直接透過 URL 傳參進入 10 月實體後台，不留任何 JS 引號或括號給 Python 誤判
-            print(" -> Directing browser straight to October 2026 calendar...")
-            target_url = "https://enzanso-reservation.jp"
-            page.goto(target_url, timeout=30000, wait_until="networkidle")
+            print(" -> Loading reservation interface...")
+            page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
+            page.wait_for_timeout(2000)
             
-            print(" -> Waiting for 10月 official stylesheets to complete rendering...")
-            page.wait_for_timeout(6000)
+            # 💡 終極反思修正：動態智慧導航。最大嘗試 6 次點擊防止死循環
+            for attempt in range(1, 7):
+                current_page_text = page.content()
+                
+                # 檢查網頁當前是否已經顯示了目標的 "2026年10月"
+                if TARGET_YEAR_MONTH in current_page_text:
+                    print(f"🟢 [SUCCESS] Targeted month '{TARGET_YEAR_MONTH}' reached at step {attempt}!")
+                    break
+                    
+                print(f" -> Current month is not {TARGET_YEAR_MONTH}. Simulating human mouse click on '次月'...")
+                
+                # 用真實人類行為模擬點擊網頁上的 "次月" 連結
+                next_month_link = page.get_by_role("link", name="次月")
+                if next_month_link.is_visible():
+                    next_month_link.hover()
+                    page.wait_for_timeout(400)
+                    next_month_link.click()
+                    # 穩穩等待 4 秒鐘讓網頁局部加載完畢，防止暴衝觸發 WAF 攔截
+                    page.wait_for_timeout(4000)
+                else:
+                    print("⚠️ '次月' link is missing on this page view.")
+                    break
             
-            # 拍照存檔
+            # 到達 10 月後，多留 2 秒鐘讓樣式檔完全歸位，然後拍照
+            page.wait_for_timeout(2000)
             page.screenshot(path="screenshot.png", full_page=True)
+            print("🟢 [Playwright] Secure calibrated 10月 snapshot saved.")
+            
+            captured_html = page.content()
             browser.close()
-            print("🟢 [Playwright] October snapshot successfully saved.")
     except Exception as e:
-        print(f"❌ [Playwright Error] Subsystem failed: {e}")
+        print(f"❌ [Playwright Error] Intelligent trajectory broken: {e}")
+    return captured_html
 
 def send_alert_email(current_status_text, is_daily_report=False):
     """Sends custom notification layout strictly compliant with RFC 2387 Email Protocols"""
@@ -80,7 +103,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
             <img src="cid:calendar_image" alt="[Calendar Image]" style="max-width: 100%; border: 1px solid #ccc; border-radius: 5px;">
             <br><br>
             <div style="margin: 20px 0;">
-              <a href="{URL_BASE}" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
+              <a href="https://enzanso-reservation.jp" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
             </div>
             <br>
             <hr style="border: 0; border-top: 1px solid #eee;">
@@ -121,7 +144,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
             <p>A cancellation has just been released. Please act immediately!</p>
             <br>
             <div style="margin: 20px 0;">
-              <a href="{URL_BASE}" style="background-color: #5cb85c; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Book Now</a>
+              <a href="https://enzanso-reservation.jp" style="background-color: #5cb85c; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Book Now</a>
             </div>
           </body>
         </html>
@@ -152,20 +175,14 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": URL_BASE,
-        "Origin": "https://enzanso-reservation.jp"
-    })
+    html_content_parsed = run_playwright_workflow()
+    
+    if not html_content_parsed:
+        print("⚠️ Calibrated browser returned blank. Protection triggered.")
+        return
+
     try:
-        session.get(URL_BASE, timeout=15)
-        payload = {"p": "30", "y": "2026", "m": "10", "agree": "1"}
-        res = session.post("https://enzanso-reservation.jp", data=payload, timeout=15)
-        
-        res.encoding = 'utf-8'
-        soup = BeautifulSoup(res.text, 'html.parser')
-        
+        soup = BeautifulSoup(html_content_parsed, 'html.parser')
         list_items = soup.find_all('li')
         day_stripped = str(int(TARGET_DAY))
         found_day = False
@@ -182,7 +199,6 @@ def check_oyari(mode="check"):
                     
                     if mode == "daily":
                         print(f"Executing daily summary check. Status: {cell_text_clean}")
-                        run_playwright_screenshot()
                         send_alert_email(cell_text_clean, is_daily_report=True)
                     else:
                         if "阻" in cell_text_clean or "満" in cell_text_clean or "满" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
@@ -191,17 +207,4 @@ def check_oyari(mode="check"):
                             print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
                             send_alert_email(cell_text_clean, is_daily_report=False)
                     break
-                    
-        if not found_day and mode == "daily":
-            run_playwright_screenshot()
-            send_alert_email("Checked (October 3rd text parse missing, please verify via screenshot below)", is_daily_report=True)
-            
-    except Exception as e:
-        print("Cloud inspection node error:", e)
 
-if __name__ == "__main__":
-    run_mode = "check"
-    if len(sys.argv) > 1:
-        if "daily" in sys.argv:
-            run_mode = "daily"
-    check_oyari(mode=run_mode)
