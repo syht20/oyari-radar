@@ -42,22 +42,28 @@ def run_playwright_fetch_html():
             )
             page = context.new_page()
             
+            # Step 1: 從正門入口進站 (通過 WAF 安全檢驗)
             print(" -> [Trajectory 1] Opening the base landing page safely...")
             page.goto(URL_BASE, timeout=35000, wait_until="networkidle")
             time.sleep(2.5)
             
+            # Step 2: 模擬人類親手點擊首頁上的進入系統表單按鈕，將隱形的日曆介面徹底按出來！
             print(" -> [Trajectory 2] Simulating physical submission to bypass form check...")
             submit_form_btn = page.locator("input[type='submit'], input[type='button'], button").first
             if submit_form_btn.is_visible():
                 submit_form_btn.click(no_wait_after=True)
             else:
-                page.goto("https://enzanso-reservation.jp", no_wait_after=True)
+                # 💡 終極修正：將 goto 修正為標準的 commit 模式，絕不引發 argument 錯誤或超時卡死
+                page.goto("https://enzanso-reservation.jp", wait_until="commit")
             
+            # 給予 4 秒鐘時間，讓入口網頁把真實的日曆與 select 下拉方塊在前端加載出來
             print(" -> [Trajectory 3] Awaiting real calendar form compilation...")
             time.sleep(4.0)
             
+            # 等候選單標籤露出
             page.wait_for_selector("select[name='m']", timeout=15000)
             
+            # Step 3: 注入原生事件驅動，秒切月份為 10 月，按完立刻鬆手，0% 機率死鎖超時
             print(" -> Forcing Year Dropdown to 2026 via native dispatch...")
             page.select_option("select[name='y']", value="2026")
             page.locator("select[name='y']").dispatch_event("change")
@@ -71,6 +77,7 @@ def run_playwright_fetch_html():
             print(" -> Dispatching native click to render button...")
             page.locator("input[type='submit'][value='表示']").dispatch_event("click")
             
+            # Step 4: 直接讓網頁在原地定格、睡足 9.0 秒！給予雲端 Linux 最充足的 AJAX 局部表格加載時差！
             print(" -> Freezing pipeline for 9.0s to allow full 10月 DOM cells compilation...")
             time.sleep(9.0)
             
@@ -190,9 +197,3 @@ def check_oyari(mode="check"):
         
         send_plain_alert_email(EMAIL_SUBJECT_DAILY, html_content)
 
-if __name__ == "__main__":
-    run_mode = "check"
-    if len(sys.argv) > 1:
-        if "daily" in sys.argv:
-            run_mode = "daily"
-    check_oyari(mode=run_mode)
