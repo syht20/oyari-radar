@@ -24,7 +24,7 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 def run_playwright_fetch_html():
     """📸 終極破局：利用網頁原生的 doPost 函數直接在記憶體中切換月份，100% 避開不重整理卡死的陷阱"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Initializing high-grade native function injection...")
+    print("📸 [Playwright] Launching high-compatibility event injection subsystem...")
     captured_html = ""
     try:
         with sync_playwright() as p:
@@ -41,7 +41,7 @@ def run_playwright_fetch_html():
             )
             page = context.new_page()
             
-            print(" -> Loading base reservation interface...")
+            print(" -> Loading reservation interface...")
             page.goto(URL_BASE, timeout=35000, wait_until="networkidle")
             time.sleep(2.5)
             
@@ -49,12 +49,12 @@ def run_playwright_fetch_html():
             print(" -> Injecting native doPost handler to force shift into 2026-10...")
             page.evaluate("doPost(document.calendarform, '#yoteibi', '20261001')")
             
-            # 定格等待 6 秒鐘，給予極其充足的時間讓 AJAX 局部刷新把 10 月的 <li> 標籤填滿
-            print(" -> Freeze pipeline for 6.0s to allow local AJAX DOM population...")
-            time.sleep(6.0)
+            # 定格等待 7 秒鐘，給予極其充足的時間讓 AJAX 局部刷新把 10 月的 <li> 標籤填滿
+            print(" -> Freeze pipeline for 7.0s to allow local AJAX DOM population...")
+            time.sleep(7.0)
             
-            # 直接帶走 10 月份完全渲染好的真實網頁代碼（與您給我的結構完全一致！）
-            captured_html = page.content()
+            # 💡 核心修正：在瀏覽器關閉前，用最安全的深拷貝字串將 HTML 完全抽離帶走！
+            captured_html = str(page.content())
             browser.close()
             print("🟢 [Playwright] Real-time October HTML stream securely captured.")
     except Exception as e:
@@ -92,12 +92,11 @@ def send_plain_alert_email(subject, body_html):
 
 def extract_day_status(clean_html_text, day_string):
     """核心交叉驗證演算法：精準定位特定日期在 HTML 標籤內部的即時狀態"""
-    # 尋找與您原始碼完全對齊的狀態字元
-    match = re.search(day_string + r'.*?([◯▲満满\d])', clean_html_text)
+    match = re.search(day_string + r'.*?([◯▲臨満满\d])', clean_html_text)
     if match:
         status_char = match.group(1)
         if status_char in ["臨", "満", "满"]:
-            return "滿室 (満)"
+            return "滿室 (臨/満)"
         elif status_char in ["◯", "▲"] or status_char.isdigit():
             return f"🔥 有空房 [{status_char}]"
         return f"未知狀態 ({status_char})"
@@ -111,7 +110,6 @@ def check_oyari(mode="check"):
         print("⚠️ Subsystem returned blank. Task bypassed.")
         return
 
-    # 100% 恢復您最引以為傲、完全正確的 BeautifulSoup 標籤循環解析
     soup = BeautifulSoup(html_content_parsed, 'html.parser')
     list_items = soup.find_all('li')
     day_stripped = str(int(TARGET_DAY))
@@ -123,7 +121,6 @@ def check_oyari(mode="check"):
         cell_text = li.get_text(" ", strip=True)
         cell_text_clean = "".join(cell_text.split())
         
-        # 精確核對您給予的 class="day" 或 10月3日 格子特徵
         if re.search(r'(?<!\d)' + day_stripped + r'(?!\d)', cell_text_clean) and ("class=\"day\"" in li_html or "div" in li_html):
             if "previous" not in li_html and "next" not in li_html and "calendarDate" not in li_html:
                 found_day = True
@@ -141,19 +138,17 @@ def check_oyari(mode="check"):
     if preview_idx == -1: preview_idx = 0
     raw_snippet = html_content_parsed[preview_idx:preview_idx+2500].strip().replace('<', '&lt;').replace('>', '&gt;')
 
-    # 判斷是否需要發送 Urgent 簡訊警報
     if mode != "daily":
-        if found_day and "満" not in cell_text_clean and "满" not in cell_text_clean and "臨" not in cell_text_clean:
+        if found_day and "臨" not in cell_text_clean and "満" not in cell_text_clean and "满" not in cell_text_clean:
             print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
             urgent_html = f"<h2>🔥 [Vacancy Alert] October 3rd is available ({cell_text_clean})!</h2>"
             send_plain_alert_email(EMAIL_SUBJECT_URGENT, urgent_html)
         else:
             print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
             
-    # 執行 Daily 面板報告發送
     else:
         print("Executing daily report summary node...")
-        status_label = f"10月3日狀態：{cell_text_clean}" if found_day else "10月3日狀態：請查收下方實時數據面板"
+        status_label = f"10月3日狀態：{cell_text_clean}" if found_day else "10月3日狀態：請對照下方實時數據面板"
         
         html_content = f"""
         <html>
@@ -170,7 +165,7 @@ def check_oyari(mode="check"):
               </ul>
             </div>
 
-            <p>If you see '◯', '▲', or any single-digit number instead of '満', please click below to book immediately!</p>
+            <p>If you see '◯', '▲', or any single-digit number instead of '臨' or '満', please act immediately!</p>
             <br>
             
             <!-- 核心黑色原始碼面板 -->
