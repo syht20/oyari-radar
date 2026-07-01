@@ -18,13 +18,47 @@ TARGET_DAY = "3"  # 🎯 Deadlocked on Oct 3rd for your Mt. Yarigatake trek!
 
 # ✉️ Please fill in your traditional email credentials here:
 SENDER_EMAIL = "juvenmini@gmail.com"
-PASSWORD = "qywcsfzqrpvemoyo"         # 💡 Your 16-letter App Password (e.g. "abcdefghijklmnop")
+PASSWORD = "qywcsfzqrpvemoyo"         # 💡 Your 16-letter App Password
 RECIPIENT_EMAIL = "syht20@gmail.com" # 💡 Your recipient inbox
 
 EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become available"
-# 🎯 Daily 標題已依您的要求精準修改為：
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
 # ===================================================================
+
+def run_playwright_screenshot():
+    """📸 徹底獨立的截圖函數，完全避開多行字串與 Python 語法衝突"""
+    from playwright.sync_api import sync_playwright
+    print("📸 [Playwright] Starting browser...")
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=[
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ])
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 1000},
+                locale="zh-TW",
+                timezone_id="Asia/Taipei"
+            )
+            page = context.new_page()
+            print(" -> Visiting base URL...")
+            page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
+            page.wait_for_timeout(2000)
+            
+            print(" -> Submitting 2026-10 calendar form...")
+            # 💡 乾淨的單行 JS，完全避免 {} 與 Python f-string 衝突
+            js_script = "() => { const f = document.createElement('form'); f.method = 'POST'; f.action = 'https://enzanso-reservation.jp'; const p1 = document.createElement('input'); p1.type = 'hidden'; p1.name = 'p'; p1.value = '30'; const p2 = document.createElement('input'); p2.type = 'hidden'; p2.name = 'y'; p2.value = '2026'; const p3 = document.createElement('input'); p3.type = 'hidden'; p3.name = 'm'; p3.value = '10'; const p4 = document.createElement('input'); p4.type = 'hidden'; p4.name = 'agree'; f.appendChild(p1); f.appendChild(p2); f.appendChild(p3); f.appendChild(p4); document.body.appendChild(f); f.submit(); }"
+            page.evaluate(js_script)
+            
+            print(" -> Waiting for render...")
+            page.wait_for_timeout(6000)
+            page.screenshot(path="screenshot.png", full_page=True)
+            browser.close()
+            print("🟢 [Playwright] Snapshot saved.")
+    except Exception as e:
+        print(f"❌ [Playwright Error]: {e}")
 
 def send_alert_email(current_status_text, is_daily_report=False):
     """Sends custom notification layout based on mode (Python 3.12 compatible)"""
@@ -34,7 +68,6 @@ def send_alert_email(current_status_text, is_daily_report=False):
     
     if is_daily_report:
         msg['Subject'] = EMAIL_SUBJECT_DAILY
-        # 📊 Daily visual report content layout
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -56,7 +89,6 @@ def send_alert_email(current_status_text, is_daily_report=False):
         """
     else:
         msg['Subject'] = EMAIL_SUBJECT_URGENT
-        # 🔥 Urgent vacancy trigger warning layout
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -75,7 +107,6 @@ def send_alert_email(current_status_text, is_daily_report=False):
         
     msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-    # 🛠️ 【安全外掛機制】：檢查圖片檔案是否存在並嘗試嵌入。
     if is_daily_report:
         if os.path.exists("screenshot.png"):
             try:
@@ -90,8 +121,10 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ [DIAGNOSTIC ERROR] screenshot.png DOES NOT EXIST!")
 
     smtp_target = "://gmail.com"
-    try: socket.gethostbyname(smtp_target)
-    except socket.gaierror: smtp_target = "64.233.189.108"
+    try:
+        socket.gethostbyname(smtp_target)
+    except socket.gaierror:
+        smtp_target = "64.233.189.108"
 
     try:
         server = smtplib.SMTP_SSL(smtp_target, 465, timeout=15)
@@ -111,17 +144,13 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
-    # 🛠️ 【安全外掛機制】：只有每日報告模式會在背景嘗試截圖
     if mode == "daily":
         print("🔍 [DIAGNOSTIC] Starting check_oyari in DAILY mode...")
-        try:
-            run_playwright_screenshot()
-        except Exception as e:
-            print("❌ [DIAGNOSTIC CRITICAL ERROR] run_playwright_screenshot completely failed:", e)
+        run_playwright_screenshot()
 
     session = requests.Session()
     session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, line Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Referer": URL_BASE,
         "Origin": "https://enzanso-reservation.jp"
     })
@@ -162,38 +191,9 @@ def check_oyari(mode="check"):
     except Exception as e:
         print("Cloud inspection node error:", e)
 
-def run_playwright_screenshot():
-    from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Trying to capture calendar snapshot with Anti-Bot bypass...")
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=[
-                '--disable-blink-features=AutomationControlled',
-                '--no-sandbox',
-                '--disable-setuid-sandbox'
-            ])
-            
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                viewport={"width": 1280, "height": 1000},
-                locale="zh-TW",
-                timezone_id="Asia/Taipei"
-            )
-            
-            page = context.new_page()
-            
-            print(" -> Visiting base URL...")
-            page.goto(URL_BASE, timeout=30000, wait_until="networkidle")
-            page.wait_for_timeout(2000)
-            
-            print(" -> Executing anti-bot secure form submission...")
-            js_script = "() => { const f = document.createElement('form'); f.method = 'POST'; f.action = 'https://enzanso-reservation.jp'; const p1 = document.createElement('input'); p1.type = 'hidden'; p1.name = 'p'; p1.value = '30'; const p2 = document.createElement('input'); p2.type = 'hidden'; p2.name = 'y'; p2.value = '2026'; const p3 = document.createElement('input'); p3.type = 'hidden'; p3.name = 'm'; p3.value = '10'; const p4 = document.createElement('input'); p4.type = 'hidden'; p4.name = 'agree'; p4.value = '1'; f.appendChild(p1); f.appendChild(p2); f.appendChild(p3); f.appendChild(p4); document.body.appendChild(f); f.submit(); }"
-            page.evaluate(js_script)
-            
-            print(" -> Waiting for calendar render...")
-            page.wait_for_timeout(6000)
-            
-            page.screenshot(path="screenshot.png", full_page=True)
-            browser.close()
-            print("🟢 [Playwright] Anti-bot snapshot successfully saved.")
-    except Exception as e:
+if __name__ == "__main__":
+    run_mode = "check"
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "daily":
+            run_mode = "daily"
+    check_oyari(mode=run_mode)
