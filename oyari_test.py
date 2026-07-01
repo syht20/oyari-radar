@@ -173,7 +173,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
-    """💡 獨立函數：只負責純網頁數據解析，與 Playwright 徹底隔開，0% 機率引發 except 衝突"""
+    """💡 獨立函數：只負責純網頁數據解析，與 Playwright 徹底隔開"""
     html_content_parsed = run_playwright_workflow()
     
     if not html_content_parsed:
@@ -205,7 +205,8 @@ def check_oyari(mode="check"):
                         else:
                             print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
                             send_alert_email(cell_text_clean, is_daily_report=False)
-                    break
+                    # 💡 終極修正：將 break 準確縮排進 if 肚子裡，徹底拔除全劇編譯地雷！
+
                     
 
                     
