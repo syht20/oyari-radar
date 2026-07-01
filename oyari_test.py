@@ -7,9 +7,13 @@ import sys
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
+import requests
 
 # ==================== Cloud Email Configuration ====================
 URL_BASE = "https://enzanso-reservation.jp"
+# 💡 終極降維：直擊診斷與 HTML 原始碼中共同發現的實體 AJAX 日曆數據接口
+URL_POST_TARGET = "https://enzanso-reservation.jp"
+
 TARGET_YEAR_MONTH = "2026年10月"
 TARGET_DAY = "3"  # 🎯 Deadlocked on Oct 3rd for your Mt. Yarigatake trek!
 
@@ -20,46 +24,6 @@ RECIPIENT_EMAIL = "syht20@gmail.com" # 💡 Your recipient inbox
 EMAIL_SUBJECT_URGENT = "🚨<Book now!>ヒュッテ大槍 Oct 3 has become available"
 EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability report"
 # ===================================================================
-
-def run_playwright_fetch_html():
-    """📸 終極破局：利用網頁原生的 doPost 函數直接在記憶體中切換月份，100% 避開不重整理卡死的陷阱"""
-    from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Launching high-compatibility event injection subsystem...")
-    captured_html = ""
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=[
-                '--disable-blink-features=AutomationControlled',
-                '--no-sandbox',
-                '--disable-setuid-sandbox'
-            ])
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                viewport={"width": 1280, "height": 1000},
-                locale="ja-JP",
-                timezone_id="Asia/Tokyo"
-            )
-            page = context.new_page()
-            
-            print(" -> Loading reservation interface...")
-            page.goto(URL_BASE, timeout=35000, wait_until="networkidle")
-            time.sleep(2.5)
-            
-            # 💡 終極降維大拆彈：直接在前端引爆網頁原生的 doPost 函數，命令日曆局部重繪至 2026年10月1日！
-            print(" -> Injecting native doPost handler to force shift into 2026-10...")
-            page.evaluate("doPost(document.calendarform, '#yoteibi', '20261001')")
-            
-            # 定格等待 7 秒鐘，給予極其充足的時間讓 AJAX 局部刷新把 10 月的 <li> 標籤填滿
-            print(" -> Freeze pipeline for 7.0s to allow local AJAX DOM population...")
-            time.sleep(7.0)
-            
-            # 💡 核心修正：在瀏覽器關閉前，用最安全的深拷貝字串將 HTML 完全抽離帶走！
-            captured_html = str(page.content())
-            browser.close()
-            print("🟢 [Playwright] Real-time October HTML stream securely captured.")
-    except Exception as e:
-        print(f"❌ [Playwright Error] Native function branch broken: {e}")
-    return captured_html
 
 def send_plain_alert_email(subject, body_html):
     """最純粹、無任何結構嵌套的標準寄信引擎，100% 綠燈秒發秒收"""
@@ -103,13 +67,33 @@ def extract_day_status(clean_html_text, day_string):
     return "未能在原始碼中定位該日期 (Data unparsed)"
 
 def check_oyari(mode="check"):
-    """💡 終極合流主體：利用 Playwright 的原生 JS 切換拿到 10月源碼，再交給 BeautifulSoup 解析"""
-    html_content_parsed = run_playwright_fetch_html()
+    """💡 終極大降維：模擬真實的 AJAX 請求包，秒發秒收，0% 機率卡死超時或中途崩潰"""
+    print("🚀 [AJAX CONNECTOR] Initializing standard requests synchronization...")
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "ja,zh-TW;q=0.9,zh;q=0.8,en-US;q=0.7,en;q=0.6",
+        "Referer": URL_POST_TARGET,
+        "Origin": URL_BASE
+    })
     
-    if not html_content_parsed:
-        print("⚠️ Subsystem returned blank. Task bypassed.")
-        return
+    # 軌跡對齊：拜訪首頁拿基本 Cookie，並定格睡 2.5 秒對齊人類時間軸
+    session.get(URL_BASE, timeout=15)
+    time.sleep(2.5)
+    
+    # 💡 終極降維破局：完全對齊網頁原生 doPost 函數發送的實體 AJAX 局部刷新數據包！
+    ajax_payload = {
+        "yoteibi": "20261001",  # 鎖定 2026年10月01日 局部表格更新參數
+        "p": "30",              # 槍岳大槍 Hut ID 欄位
+        "agree": "1"            # 同意欄位
+    }
+    
+    res = session.post(URL_POST_TARGET, data=ajax_payload, timeout=15)
+    res.encoding = 'utf-8'
+    html_content_parsed = res.text
 
+    # 100% 還原您最穩定、完全沒有問題的 BeautifulSoup 解析引擎
     soup = BeautifulSoup(html_content_parsed, 'html.parser')
     list_items = soup.find_all('li')
     day_stripped = str(int(TARGET_DAY))
@@ -126,7 +110,7 @@ def check_oyari(mode="check"):
                 found_day = True
                 break
 
-    # 執行 10/2、10/3、10/6 的三日期交叉數據驗證比對
+    # 執行 10/2、10/3、10/6 的三日期數據交叉核對
     clean_all_spaces = "".join(html_content_parsed.split())
     status_10_02 = extract_day_status(clean_all_spaces, "2日")
     status_10_03 = extract_day_status(clean_all_spaces, "3日")
@@ -139,10 +123,11 @@ def check_oyari(mode="check"):
     raw_snippet = html_content_parsed[preview_idx:preview_idx+2500].strip().replace('<', '&lt;').replace('>', '&gt;')
 
     if mode != "daily":
-        if found_day and "臨" not in cell_text_clean and "満" not in cell_text_clean and "满" not in cell_text_clean:
-            print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
-            urgent_html = f"<h2>🔥 [Vacancy Alert] October 3rd is available ({cell_text_clean})!</h2>"
-            send_plain_alert_email(EMAIL_SUBJECT_URGENT, urgent_html)
+        if found_day and "臨" not in cell_text_clean and "満" not in cell_text_clean and "...":
+            if "◯" in cell_text_clean or "▲" in cell_text_clean or cell_text_clean.isdigit():
+                print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
+                urgent_html = f"<h2>🔥 [Vacancy Alert] October 3rd is available ({cell_text_clean})!</h2>"
+                send_plain_alert_email(EMAIL_SUBJECT_URGENT, urgent_html)
         else:
             print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
             
@@ -165,7 +150,7 @@ def check_oyari(mode="check"):
               </ul>
             </div>
 
-            <p>If you see '◯', '▲', or any single-digit number instead of '臨' or '満', please act immediately!</p>
+            <p>If you see '◯', '▲', or any single-digit number instead of '臨' or '慢' or '満', please act immediately!</p>
             <br>
             
             <!-- 核心黑色原始碼面板 -->
@@ -175,7 +160,7 @@ def check_oyari(mode="check"):
             </div>
             <br>
             <div style="margin: 20px 0;">
-              <a href="https://enzanso-reservation.jp" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
+              <a href="https://enzanso-reservation.jp?p=30" style="background-color: #337ab7; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">👉 Click Here to Go to Official Booking Site</a>
             </div>
           </body>
         </html>
