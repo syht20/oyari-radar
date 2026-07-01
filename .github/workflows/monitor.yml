@@ -58,4 +58,10 @@ jobs:
 
     # 精準導向大範圍診斷矩陣檔案
     - name: Execute Full Matrix Experiment Subsystem
-      run: python test_all.py daily
+      run: python oyari_test.py daily
+
+
+
+
+
+
