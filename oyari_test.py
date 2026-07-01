@@ -121,7 +121,7 @@ def check_oyari(mode="check"):
 
     session = requests.Session()
     session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, line Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Referer": URL_BASE,
         "Origin": "https://enzanso-reservation.jp"
     })
@@ -195,5 +195,5 @@ def run_playwright_screenshot():
             
             page.screenshot(path="screenshot.png", full_page=True)
             browser.close()
-        print("🟢 [Playwright] Anti-bot snapshot successfully saved.")
+            print("🟢 [Playwright] Anti-bot snapshot successfully saved.")
     except Exception as e:
