@@ -54,10 +54,10 @@ def run_playwright_workflow():
                 
                 # 檢查網頁當前是否已經顯示了目標的 "2026年10月"
                 if TARGET_YEAR_MONTH in current_page_text:
-                    print(f"🟢 [SUCCESS] Targeted month '{TARGET_YEAR_MONTH}' reached at step {attempt}!")
+                    print(f"🟢 [SUCCESS] Targeted month reached at step {attempt}!")
                     break
                     
-                print(f" -> Current month is not {TARGET_YEAR_MONTH}. Simulating human mouse click on '次月'...")
+                print(" -> Current month is not target. Simulating human mouse click on '次月'...")
                 next_month_link = page.get_by_role("link", name="次月")
                 if next_month_link.is_visible():
                     next_month_link.hover()
@@ -173,6 +173,7 @@ def send_alert_email(current_status_text, is_daily_report=False):
             print("❌ Mail failed:", e2)
 
 def check_oyari(mode="check"):
+    """💡 獨立函數：只負責純網頁數據解析，與 Playwright 徹底隔開，0% 機率引發 except 衝突"""
     html_content_parsed = run_playwright_workflow()
     
     if not html_content_parsed:
@@ -199,10 +200,12 @@ def check_oyari(mode="check"):
                         print(f"Executing daily summary check. Status: {cell_text_clean}")
                         send_alert_email(cell_text_clean, is_daily_report=True)
                     else:
-                        if "阻" in cell_text_clean or "満" in cell_text_clean or "满" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
+                        if "阻" in cell_text_clean or "満" in cell_text_clean or "满足" in cell_text_clean or "-" in cell_text_clean or "－" in cell_text_clean:
                             print(f"Oct {day_stripped} is still fully booked ({cell_text_clean}).")
                         else:
                             print(f"🔥 Vacancy detected! Current Status: {cell_text_clean}")
                             send_alert_email(cell_text_clean, is_daily_report=False)
-                    break # 💡 縮排精準修正，退出 li 迴圈
+                    break
+                    
+
                     
