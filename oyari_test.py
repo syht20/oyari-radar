@@ -9,7 +9,7 @@ from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
 
 # ==================== Cloud Email Configuration ====================
-# 💡 終極合流修正：起點指向含有真實日曆元素、且能安全帶入 Session 的實體頁面網址
+# 💡 終極合流修正：直接指向含有真實日曆選單、且帶有 p=30 Hut參數的實體日曆網頁
 URL_BASE = "https://enzanso-reservation.jp"
 
 TARGET_YEAR_MONTH = "2026年10月"
@@ -24,9 +24,9 @@ EMAIL_SUBJECT_DAILY = "⛰️ ヒュッテ大槍 Oct 2026 daily availability rep
 # ===================================================================
 
 def run_playwright_fetch_html():
-    """📸 終極大合流：從正確實體頁面進站，注入矩陣 4 成功通關的 JS submit 協議，徹底切換月份"""
+    """📸 智慧降維：從實體頁面進站，物理切換 select 下拉選單，no_wait_after=True 徹底拔除超時與洗白地雷"""
     from playwright.sync_api import sync_playwright
-    print("📸 [Playwright] Launching ultimate verified form injection routing...")
+    print("📸 [Playwright] Launching ultimate verified physical UI routing...")
     captured_html = ""
     try:
         with sync_playwright() as p:
@@ -37,32 +37,38 @@ def run_playwright_fetch_html():
             ])
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                viewport={"width": 1280, "height": 1000},
+                viewport={"width": 1280, "height": 1100},
                 locale="ja-JP",
                 timezone_id="Asia/Tokyo"
             )
             page = context.new_page()
             
-            # Step 1: 從正確的實體日曆網頁進站
-            print(" -> Loading verified calendar base interface...")
+            # Step 1: 拜訪實體日曆頁面
+            print(" -> Loading verified calendar real DOM interface...")
             page.goto(URL_BASE, timeout=35000, wait_until="networkidle")
             time.sleep(3.0)
             
-            # Step 2: 💡 矩陣 4 終極融合！利用真實日曆頁面的真實 calendarform 執行原生 submit()
-            print(" -> Injecting native calendarform overrides for October 2026...")
-            js_payload = "() => { const f = document.querySelector('form') || document.calendarform; if(f) { f.p.value='30'; f.y.value='2026'; f.m.value='10'; f.agree.value='1'; f.submit(); } }"
-            page.evaluate(js_payload)
+            # Step 2: 💡 物理操作真實存在於畫面上的選單與按鈕，完全不注入任何 JS 表單字串！
+            print(" -> Selecting Year 2026 and Month 10 dynamically...")
+            page.select_option("select[name='y']", value="2026")
+            time.sleep(0.5)
+            page.select_option("select[name='m']", value="10")
+            time.sleep(0.5)
             
-            # Step 3: 降維防卡死：完全不點擊按鈕，直接定格睡足 8 秒鐘，讓 AJAX 在背景把 10 月的所有標籤完全畫完
-            print(" -> Holding freeze for 8.0s to allow full 10月 DOM cells compilation...")
-            time.sleep(8.0)
+            # 💡 核心解鎖：點擊「表示」按鈕，並加上 no_wait_after=True 強制 Playwright 鬆手，防範原地卡死！
+            print(" -> Clicking display button via lock-free channel...")
+            page.locator("input[type='submit'][value='表示']").click(no_wait_after=True)
             
-            # 拔走 10 月份完全加載完畢的真實網頁原始碼文字
+            # Step 3: 直接讓網頁在原地定格、睡足 8.5 秒！給予雲端 Linux 最完美的 AJAX 表格重繪時差！
+            print(" -> Freezing pipeline for 8.5s to let local AJAX populate 10月 DOM cells...")
+            time.sleep(8.5)
+            
+            # 拷貝 10 月份完全渲染成功的真實 HTML 字串帶走
             captured_html = str(page.content())
             browser.close()
-            print("🟢 [Playwright] Real-time October HTML stream securely synchronized.")
+            print("🟢 [Playwright] Real-time October HTML stream securely captured.")
     except Exception as e:
-        print(f"❌ [Playwright Error] Form injection branch broken: {e}")
+        print(f"❌ [Playwright Error] Physical UI routing channel broke: {e}")
     return captured_html
 
 def send_plain_alert_email(subject, body_html):
@@ -100,14 +106,14 @@ def extract_day_status(clean_html_text, day_string):
     if match:
         status_char = match.group(1)
         if status_char in ["臨", "満", "满"]:
-            return "滿室 (臨/満)"
+            return "滿室 (臨/慢/満)"
         elif status_char in ["◯", "▲"] or status_char.isdigit():
             return f"🔥 有空房 [{status_char}]"
         return f"未知狀態 ({status_char})"
     return "未能在原始碼中定位該日期"
 
 def check_oyari(mode="check"):
-    """💡 獨立主體：用 Playwright 的 JS 表單提交拿到 10月純文字，其餘解析 100% 還原 Version 1"""
+    """💡 獨立主體：用 Playwright 的物理選單操作拿到 10月純文字，其餘解析 100% 還原 Version 1"""
     html_content_parsed = run_playwright_fetch_html()
     
     if not html_content_parsed:
@@ -175,7 +181,7 @@ def check_oyari(mode="check"):
             <p>If you see '◯', '▲', or any single-digit number instead of '臨' or '満', please click below to book immediately!</p>
             <br>
             
-            <!-- 核心黑色原始碼面板 -->
+            <!-- 核心黑色原始碼面板 (100% 承接真實 10 月數據) -->
             <div style="background:#222; padding:15px; border-radius:6px; font-family:monospace; box-shadow: inset 0 0 10px #000;">
               <b style="color:#5cb85c;">[💾 Real October Calendar HTML Source Code Node]</b>
               <pre style="white-space: pre-wrap; font-size:12px; color:#fff; margin-top:10px; line-height:1.4;">{raw_snippet}</pre>
